@@ -1,0 +1,6 @@
+{
+  "name": "Xe Tăng Đại Chiến - Tank Battle 1990 Reborn",
+  "description": "Trò chơi bắn xe tăng đại chiến kinh điển với máy AI, nâng cấp chiến xa, bản đồ chiến thuật và hiệu ứng âm thanh sống động.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

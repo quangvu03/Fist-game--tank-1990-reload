@@ -50,6 +50,20 @@ export default function App() {
     gameMode: 'CAMPAIGN',
     weather: 'CLEAR',
     isWeatherEnabled: false,
+    combatStats: {
+      speed: 110,
+      baseSpeed: 110,
+      speedBoostActive: false,
+      speedBoostRemaining: 0,
+      bulletSpeed: 260,
+      reloadMax: 0.45,
+      fireRate: 2.2,
+      doubleShot: false,
+      canBreakSteel: false,
+      tier: 1,
+      tierName: 'Pháo Cơ Bản',
+    },
+    activeBuffs: [],
   });
 
   const [remainingEnemies, setRemainingEnemies] = useState<number>(0);
@@ -93,21 +107,38 @@ export default function App() {
 
   // Start new stage in engine
   const startEngineWithStage = useCallback(
-    (cfg: StageConfig, mode: GameMode, cMode: ControlMode, _preserveTier: boolean = false) => {
+    (
+      cfg: StageConfig,
+      mode: GameMode,
+      cMode: ControlMode,
+      _preserveTier: boolean = false,
+      initialProgression?: {
+        baseTier?: number;
+        playerTier?: number;
+        score?: number;
+        lives?: number;
+      }
+    ) => {
       if (!canvasRef.current) return;
 
       if (engineRef.current) {
         engineRef.current.destroy();
       }
 
-      const engine = new GameEngine(canvasRef.current, cfg, mode, {
-        onStatsUpdate: (updatedStats, remaining) => {
-          setStats(updatedStats);
-          setRemainingEnemies(remaining);
+      const engine = new GameEngine(
+        canvasRef.current,
+        cfg,
+        mode,
+        {
+          onStatsUpdate: (updatedStats, remaining) => {
+            setStats(updatedStats);
+            setRemainingEnemies(remaining);
+          },
+          onGameOver: handleGameOver,
+          onStageClear: handleStageClear,
         },
-        onGameOver: handleGameOver,
-        onStageClear: handleStageClear,
-      });
+        initialProgression
+      );
 
       engine.setControlMode(cMode);
       engine.start();
@@ -167,9 +198,19 @@ export default function App() {
       nextConfig = generateSurvivalStage(nextIdx + 1);
     }
 
+    const prevBaseTier = engineRef.current ? engineRef.current.getBaseTier() : undefined;
+    const prevPlayerTier = engineRef.current ? engineRef.current.getPlayerTier() : undefined;
+    const prevScore = engineRef.current ? engineRef.current.getScore() : undefined;
+    const prevLives = engineRef.current ? engineRef.current.getLives() : undefined;
+
     setCurrentStageIndex(nextIdx);
     setCurrentStageConfig(nextConfig);
-    startEngineWithStage(nextConfig, gameMode, controlMode, true);
+    startEngineWithStage(nextConfig, gameMode, controlMode, true, {
+      baseTier: prevBaseTier,
+      playerTier: prevPlayerTier,
+      score: prevScore,
+      lives: prevLives,
+    });
   }, [currentStageIndex, gameMode, controlMode, startEngineWithStage]);
 
   // Restart current stage
@@ -288,7 +329,7 @@ export default function App() {
           </div>
 
           {/* Bottom Hint Footer */}
-          <GameFooter highScore={stats.highScore} />
+          <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
         </div>
 
         {/* Touch Controls for mobile/tablet docked cleanly below */}

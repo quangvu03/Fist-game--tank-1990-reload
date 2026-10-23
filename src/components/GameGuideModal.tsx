@@ -23,6 +23,10 @@ import {
   Layers,
   Cross,
   Star,
+  Gauge,
+  Flame,
+  Award,
+  Sparkles,
 } from 'lucide-react';
 
 interface GameGuideModalProps {
@@ -30,7 +34,7 @@ interface GameGuideModalProps {
   onClose: () => void;
 }
 
-type TabType = 'HUD' | 'ITEMS' | 'ENEMIES' | 'TILES' | 'CONTROLS';
+type TabType = 'HUD' | 'STATS' | 'ITEMS' | 'ENEMIES' | 'TILES' | 'CONTROLS';
 
 export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('HUD');
@@ -83,6 +87,18 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
           >
             <Heart className="w-3.5 h-3.5" />
             <span>Thanh Chỉ Số (HUD)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('STATS')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'STATS'
+                ? 'bg-amber-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            <span>Tốc Độ & Hỏa Lực</span>
           </button>
 
           <button
@@ -238,6 +254,187 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                   <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
                     Tổng số lượng chiến xa địch còn lại trong màn chơi (bao gồm cả xe đang tuần tra trên bản đồ và xe đang xếp hàng đợi xuất kích). Tiêu diệt hết số này để giành chiến thắng màn!
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Tốc độ & Hỏa Lực (Stats & Telemetry Codex) */}
+          {activeTab === 'STATS' && (
+            <div className="space-y-3.5">
+              {/* Highlight Announcement */}
+              <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/20 to-slate-950 border border-amber-500/40 rounded-xl p-3.5 flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                  <Gauge className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-amber-300">
+                    BẢNG THÔNG SỐ TÁC CHIẾN THỜI GIAN THỰC (LIVE TELEMETRY)
+                  </h3>
+                  <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
+                    Trò chơi hiện hiển thị chi tiết <b>Tốc độ chạy</b>, <b>Tốc độ bắn</b>, <b>Vận tốc đạn</b> và <b>Thời gian hiệu lực vật phẩm</b> ngay trên thanh công cụ tác chiến phía trên và chân trang. Mỗi khi bạn nhặt <b>⭐ Ngôi Sao</b> hoặc <b>⚡ Tăng Tốc</b>, các con số này sẽ lập tức tăng vọt trong thời gian thực!
+                  </p>
+                </div>
+              </div>
+
+              {/* 4 Cấp Độ Xe Tăng Chi Tiết */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  CHỈ SỐ THEO 4 CẤP BẬC CHIẾN XA (C1 → C4)
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Tier 1 */}
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded bg-emerald-500/20 text-emerald-400 font-black flex items-center justify-center text-[10px]">C1</span>
+                        <span className="font-bold text-white text-xs">Pháo Cơ Bản</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-emerald-400 font-bold">3 HP</span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-slate-300">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ chạy:</span>
+                        <span className="font-mono font-bold text-amber-300">110 px/s</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ bắn:</span>
+                        <span className="font-mono font-bold text-orange-300">2.2 phát/s (0.45s)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Vận tốc đạn:</span>
+                        <span className="font-mono font-bold text-cyan-300">260 px/s</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400 pt-0.5">
+                        <span>Hỏa lực:</span>
+                        <span>Đạn đơn tiêu chuẩn</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tier 2 */}
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded bg-sky-500/20 text-sky-400 font-black flex items-center justify-center text-[10px]">C2</span>
+                        <span className="font-bold text-white text-xs">Pháo Siêu Tốc</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-sky-400 font-bold">4 HP (+1)</span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-slate-300">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ chạy:</span>
+                        <span className="font-mono font-bold text-amber-300">120 px/s <span className="text-[9px] text-emerald-400">(+9%)</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ bắn:</span>
+                        <span className="font-mono font-bold text-orange-300">2.9 phát/s <span className="text-[9px] text-emerald-400">(0.35s)</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Vận tốc đạn:</span>
+                        <span className="font-mono font-bold text-cyan-300">330 px/s <span className="text-[9px] text-emerald-400">(+27%)</span></span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400 pt-0.5">
+                        <span>Hỏa lực:</span>
+                        <span>Nòng hãm giật phản lực</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tier 3 */}
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 font-black flex items-center justify-center text-[10px]">C3</span>
+                        <span className="font-bold text-white text-xs">Song Nòng Hạng Nặng</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-indigo-400 font-bold">5 HP (+2)</span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-slate-300">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ chạy:</span>
+                        <span className="font-mono font-bold text-amber-300">125 px/s <span className="text-[9px] text-emerald-400">(+14%)</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ bắn:</span>
+                        <span className="font-mono font-bold text-orange-300">3.6 phát/s <span className="text-[9px] text-emerald-400">(0.28s)</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Vận tốc đạn:</span>
+                        <span className="font-mono font-bold text-cyan-300">350 px/s <span className="text-[9px] text-emerald-400">(+35%)</span></span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-indigo-300 font-bold pt-0.5">
+                        <span>Hỏa lực:</span>
+                        <span>⚡ Bắn 2 nòng song song</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tier 4 */}
+                  <div className="bg-slate-950/70 border border-amber-500/40 rounded-xl p-3 space-y-1.5 bg-gradient-to-br from-amber-950/20 to-slate-950">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded bg-rose-500/20 text-rose-400 font-black flex items-center justify-center text-[10px]">C4</span>
+                        <span className="font-bold text-amber-300 text-xs">Chiến Xa Phá Thép</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-amber-400 font-black">6 HP (MAX)</span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-slate-300">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ chạy:</span>
+                        <span className="font-mono font-bold text-amber-300">135 px/s <span className="text-[9px] text-emerald-400">(+23%)</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Tốc độ bắn:</span>
+                        <span className="font-mono font-bold text-orange-300">4.5 phát/s <span className="text-[9px] text-emerald-400">(0.22s)</span></span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Vận tốc đạn:</span>
+                        <span className="font-mono font-bold text-cyan-300">400 px/s <span className="text-[9px] text-emerald-400">(+54%)</span></span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-rose-400 font-bold pt-0.5">
+                        <span>Hỏa lực:</span>
+                        <span>🔥 Phá hủy xuyên tường thép</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tác dụng của Hộp Tiếp Tế Tăng Tốc ⚡ SPEED */}
+              <div className="bg-slate-950/80 border border-amber-500/50 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-base">
+                    ⚡
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 text-xs">HỘP TIẾP TẾ TĂNG TỐC ĐIỆN TỪ (SPEED POWER-UP)</h4>
+                    <p className="text-slate-400 text-[10px]">Kích hoạt tức thì trong 8 giây khi xe chạm vào hộp tiếp tế hình tia sét</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+                    <span className="text-slate-400 block text-[10px]">Tốc độ chạy:</span>
+                    <span className="font-mono font-bold text-amber-300 text-xs">+35 px/s</span>
+                    <p className="text-slate-400 text-[9.5px] mt-0.5">Cơ động luồn lách né tránh đạn pháo địch cực nhanh.</p>
+                  </div>
+                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+                    <span className="text-slate-400 block text-[10px]">Tốc độ bắn:</span>
+                    <span className="font-mono font-bold text-orange-300 text-xs">+25% Nhanh hơn</span>
+                    <p className="text-slate-400 text-[9.5px] mt-0.5">Rút ngắn thời gian nạp đạn, xả đạn dồn dập áp đảo đối phương.</p>
+                  </div>
+                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+                    <span className="text-slate-400 block text-[10px]">Vận tốc đạn:</span>
+                    <span className="font-mono font-bold text-cyan-300 text-xs">+15% Tốc độ bay</span>
+                    <p className="text-slate-400 text-[9.5px] mt-0.5">Đạn bay tới mục tiêu nhanh hơn, đối phương khó né tránh.</p>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-amber-200/90 pt-1 border-t border-slate-800/80">
+                  ⏱️ <b>Đếm lùi trực tiếp:</b> Khi ăn vật phẩm ⚡, trên thanh HUD sẽ hiển thị thẻ đếm lùi thời gian (ví dụ: <code className="bg-slate-900 px-1 py-0.5 rounded text-amber-400">+35 ⚡ 7.4s</code>) để bạn kiểm soát nhịp độ chiến thuật!
                 </div>
               </div>
             </div>

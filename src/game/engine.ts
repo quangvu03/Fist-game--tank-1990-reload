@@ -13,6 +13,8 @@ import {
   ControlMode,
   GameMode,
   WeatherType,
+  PlayerCombatStats,
+  ActiveBuffInfo,
 } from '../types/game';
 import {
   GRID_COLS,
@@ -59,6 +61,7 @@ export class GameEngine {
   private wallHealthMap: Map<string, number> = new Map();
   private shovelTimer: number = 0;
   private clockFreezeTimer: number = 0;
+  private speedBoostTimer: number = 0;
 
   // Entities
   public player: Tank | null = null;
@@ -107,6 +110,20 @@ export class GameEngine {
     gameMode: 'CAMPAIGN',
     weather: 'CLEAR',
     isWeatherEnabled: weatherSystem.isEnabled,
+    combatStats: {
+      speed: 110,
+      baseSpeed: 110,
+      speedBoostActive: false,
+      speedBoostRemaining: 0,
+      bulletSpeed: 260,
+      reloadMax: 0.45,
+      fireRate: 2.2,
+      doubleShot: false,
+      canBreakSteel: false,
+      tier: 1,
+      tierName: 'Pháo Cơ Bản',
+    },
+    activeBuffs: [],
   };
 
   // Juiciness & Game Feel
@@ -137,6 +154,12 @@ export class GameEngine {
       onStatsUpdate?: (stats: GameStats, remainingEnemies: number) => void;
       onGameOver?: (won: boolean) => void;
       onStageClear?: () => void;
+    },
+    initialProgression?: {
+      baseTier?: number;
+      playerTier?: number;
+      score?: number;
+      lives?: number;
     }
   ) {
     this.canvas = canvas;
@@ -148,6 +171,16 @@ export class GameEngine {
     this.gameMode = gameMode;
     this.stats.gameMode = gameMode;
     this.stats.stage = stageConfig.id;
+
+    if (initialProgression?.baseTier) {
+      this.baseTier = initialProgression.baseTier;
+    }
+    if (initialProgression?.score !== undefined) {
+      this.stats.score = initialProgression.score;
+    }
+    if (initialProgression?.lives !== undefined) {
+      this.stats.lives = initialProgression.lives;
+    }
 
     // Load high score
     try {
@@ -163,10 +196,10 @@ export class GameEngine {
 
     this.terrainCanvas = this.generateTerrainCanvas();
     this.initListeners();
-    this.resetStage(stageConfig);
+    this.resetStage(stageConfig, true, initialProgression?.playerTier);
   }
 
-  public resetStage(stageConfig: StageConfig, preservePlayerUpgrade: boolean = true) {
+  public resetStage(stageConfig: StageConfig, preservePlayerUpgrade: boolean = true, forcedPlayerTier?: number) {
     this.currentStageConfig = stageConfig;
     this.stats.stage = stageConfig.id;
 
@@ -196,6 +229,7 @@ export class GameEngine {
     this.isPlayerDying = false;
     this.shovelTimer = 0;
     this.clockFreezeTimer = 0;
+    this.speedBoostTimer = 0;
     this.shieldOutOfCombatTimer = 10;
     this.shieldHitFlashTimer = 0;
 
@@ -211,7 +245,9 @@ export class GameEngine {
     this.trackMarks = [];
 
     // Player spawn
-    const prevTier = (preservePlayerUpgrade && this.player) ? this.player.tier : 0;
+    const prevTier = forcedPlayerTier !== undefined
+      ? forcedPlayerTier
+      : ((preservePlayerUpgrade && this.player) ? this.player.tier : 0);
     this.spawnPlayer(prevTier);
 
     this.spawnCooldown = 0.5;
@@ -380,11 +416,30 @@ export class GameEngine {
     }
   }
 
+  public getBaseTier(): number {
+    return this.baseTier;
+  }
+
+  public getPlayerTier(): number {
+    return this.player ? this.player.tier : 0;
+  }
+
+  public getScore(): number {
+    return this.stats.score;
+  }
+
+  public getLives(): number {
+    return this.stats.lives;
+  }
+
   // --- Spawning ---
   private spawnPlayer(tier: number = 0) {
     const playerTierConfig = PLAYER_TIERS[Math.min(tier, PLAYER_TIERS.length - 1)];
     const spawnX = 9 * TILE_SIZE;
     const spawnY = 24 * TILE_SIZE;
+
+    const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
+    const reloadSpeed = this.speedBoostTimer > 0 ? playerTierConfig.reloadMax * 0.8 : playerTierConfig.reloadMax;
 
     this.player = {
       id: 'player',
@@ -395,14 +450,14 @@ export class GameEngine {
       height: TANK_SIZE,
       dir: 'UP',
       turretAngle: -Math.PI / 2,
-      speed: playerTierConfig.speed,
+      speed: playerTierConfig.speed + speedBoost,
       maxHp: playerTierConfig.maxHp,
       hp: playerTierConfig.maxHp,
       tier,
       isPlayer: true,
       isFlashing: false,
       reloadTimer: 0,
-      reloadMax: playerTierConfig.reloadMax,
+      reloadMax: reloadSpeed,
       shieldTime: 3.5,
       frozenTime: 0,
       scoreValue: 0,
@@ -533,6 +588,10 @@ export class GameEngine {
 
     if (this.clockFreezeTimer > 0) {
       this.clockFreezeTimer -= dt;
+    }
+
+    if (this.speedBoostTimer > 0) {
+      this.speedBoostTimer = Math.max(0, this.speedBoostTimer - dt);
     }
 
     // Base Shield Hit Flash Timer
@@ -682,6 +741,11 @@ export class GameEngine {
       this.player.reloadTimer -= dt;
     }
 
+    const tierCfg = PLAYER_TIERS[Math.min(this.player.tier, PLAYER_TIERS.length - 1)];
+    const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
+    this.player.speed = tierCfg.speed + speedBoost;
+    this.player.reloadMax = this.speedBoostTimer > 0 ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax;
+
     let moveX = 0;
     let moveY = 0;
 
@@ -768,7 +832,8 @@ export class GameEngine {
     if (!this.player || this.player.hp <= 0 || this.isPlayerDying || this.player.reloadTimer > 0) return;
 
     const tierCfg = PLAYER_TIERS[Math.min(this.player.tier, PLAYER_TIERS.length - 1)];
-    this.player.reloadTimer = tierCfg.reloadMax;
+    const reloadSpeed = this.speedBoostTimer > 0 ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax;
+    this.player.reloadTimer = reloadSpeed;
 
     const pCenterX = this.player.x + this.player.width / 2;
     const pCenterY = this.player.y + this.player.height / 2;
@@ -777,6 +842,7 @@ export class GameEngine {
     const barrelLength = this.player.width * 0.58;
     const muzzleX = pCenterX + Math.cos(angle) * barrelLength;
     const muzzleY = pCenterY + Math.sin(angle) * barrelLength;
+    const effectiveBulletSpeed = Math.round(tierCfg.bulletSpeed * (this.speedBoostTimer > 0 ? 1.15 : 1.0));
 
     if (tierCfg.doubleShot) {
       const perpX = -Math.sin(angle) * 5;
@@ -786,8 +852,8 @@ export class GameEngine {
         id: `pb_${Date.now()}_1`,
         x: muzzleX + perpX,
         y: muzzleY + perpY,
-        vx: Math.cos(angle) * tierCfg.bulletSpeed,
-        vy: Math.sin(angle) * tierCfg.bulletSpeed,
+        vx: Math.cos(angle) * effectiveBulletSpeed,
+        vy: Math.sin(angle) * effectiveBulletSpeed,
         radius: BULLET_RADIUS,
         damage: 1,
         ownerId: this.player.id,
@@ -799,8 +865,8 @@ export class GameEngine {
         id: `pb_${Date.now()}_2`,
         x: muzzleX - perpX,
         y: muzzleY - perpY,
-        vx: Math.cos(angle) * tierCfg.bulletSpeed,
-        vy: Math.sin(angle) * tierCfg.bulletSpeed,
+        vx: Math.cos(angle) * effectiveBulletSpeed,
+        vy: Math.sin(angle) * effectiveBulletSpeed,
         radius: BULLET_RADIUS,
         damage: 1,
         ownerId: this.player.id,
@@ -813,8 +879,8 @@ export class GameEngine {
         id: `pb_${Date.now()}`,
         x: muzzleX,
         y: muzzleY,
-        vx: Math.cos(angle) * tierCfg.bulletSpeed,
-        vy: Math.sin(angle) * tierCfg.bulletSpeed,
+        vx: Math.cos(angle) * effectiveBulletSpeed,
+        vy: Math.sin(angle) * effectiveBulletSpeed,
         radius: BULLET_RADIUS,
         damage: 1,
         ownerId: this.player.id,
@@ -1444,19 +1510,22 @@ export class GameEngine {
         if (this.player) {
           this.player.tier = Math.min(3, this.player.tier + 1);
           const cfg = PLAYER_TIERS[this.player.tier];
-          this.player.speed = cfg.speed;
-          this.player.reloadMax = cfg.reloadMax;
+          const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
+          this.player.speed = cfg.speed + speedBoost;
+          this.player.reloadMax = this.speedBoostTimer > 0 ? cfg.reloadMax * 0.8 : cfg.reloadMax;
           this.player.maxHp = cfg.maxHp;
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + 1);
           this.player.name = cfg.name;
-          this.addFloatText(pX, pY, `NÂNG CẤP: ${cfg.name}!`, '#38bdf8');
+          particleSystem.emitBaseUpgradeBurst(pX, pY, '#38bdf8');
+          const fireRate = (Math.round((1 / this.player.reloadMax) * 10) / 10).toFixed(1);
+          this.addFloatText(pX, pY, `⭐ C${this.player.tier + 1} ${cfg.name}: CHẠY ${this.player.speed} · BẮN ${fireRate}/S`, '#38bdf8');
         }
         break;
 
       case 'SHIELD':
         if (this.player) {
           this.player.shieldTime = 10;
-          this.addFloatText(pX, pY, 'KHIÊN BẤT TỬ 10S!', '#38bdf8');
+          this.addFloatText(pX, pY, '🛡️ KHIÊN BẤT TỬ 10S!', '#38bdf8');
         }
         break;
 
@@ -1466,12 +1535,12 @@ export class GameEngine {
           this.handleEnemyDestroyed(e);
         }
         this.enemies = [];
-        this.addFloatText(pX, pY, 'BOM NGUYÊN TỬ!', '#f97316');
+        this.addFloatText(pX, pY, '💣 BOM NGUYÊN TỬ!', '#f97316');
         break;
 
       case 'CLOCK':
         this.clockFreezeTimer = 7.0;
-        this.addFloatText(pX, pY, 'ĐÓNG BĂNG KẺ ĐỊCH 7S!', '#67e8f9');
+        this.addFloatText(pX, pY, '⏰ ĐÓNG BĂNG KẺ ĐỊCH 7S!', '#67e8f9');
         break;
 
       case 'SHOVEL':
@@ -1481,7 +1550,7 @@ export class GameEngine {
         if (this.baseShieldMaxHp > 0) {
           this.baseShieldHp = Math.min(this.baseShieldMaxHp, this.baseShieldHp + 60);
         }
-        this.addFloatText(pX, pY, 'CÔNG SỰ THÉP & HỒI KHIÊN 16S!', '#94a3b8');
+        this.addFloatText(pX, pY, '⛏️ CÔNG SỰ THÉP & HỒI KHIÊN 16S!', '#94a3b8');
         break;
 
       case 'FORTRESS':
@@ -1497,25 +1566,24 @@ export class GameEngine {
           particleSystem.emitBaseUpgradeBurst(BASE_CENTER.x, BASE_CENTER.y, '#06b6d4');
           this.addFloatText(pX, pY, 'PHÁO ĐÀI LƯỢNG TỬ SIÊU CƯỜNG!', '#06b6d4');
         }
-        this.addFloatText(pX, pY, 'NÂNG CẤP CĂN CỨ & PHỤC HỒI KHIÊN!', '#facc15');
+        this.addFloatText(pX, pY, '🏰 NÂNG CẤP CĂN CỨ & PHỤC HỒI KHIÊN!', '#facc15');
         break;
 
       case 'HEART':
         this.stats.lives++;
         if (this.player) this.player.hp = this.player.maxHp;
-        this.addFloatText(pX, pY, '+1 MẠNG & HỒI ĐẦY MÁU!', '#ec4899');
+        this.addFloatText(pX, pY, '❤️ +1 MẠNG & HỒI ĐẦY MÁU!', '#ec4899');
         break;
 
       case 'SPEED':
+        this.speedBoostTimer = 8.0;
         if (this.player) {
-          this.player.speed += 30;
-          setTimeout(() => {
-            if (this.player) {
-              const baseSpeed = PLAYER_TIERS[this.player.tier].speed;
-              this.player.speed = baseSpeed;
-            }
-          }, 8000);
-          this.addFloatText(pX, pY, 'TĂNG TỐC ĐỘ 8S!', '#facc15');
+          const cfg = PLAYER_TIERS[this.player.tier];
+          this.player.speed = cfg.speed + 35;
+          this.player.reloadMax = cfg.reloadMax * 0.8;
+          particleSystem.emitSpawnBurst(pX, pY, '#facc15');
+          const fireRate = (Math.round((1 / this.player.reloadMax) * 10) / 10).toFixed(1);
+          this.addFloatText(pX, pY, `⚡ TĂNG TỐC 8S: CHẠY ${this.player.speed} px/s · BẮN ${fireRate}/S!`, '#facc15');
         }
         break;
     }
@@ -2559,14 +2627,75 @@ export class GameEngine {
     ctx.textBaseline = 'middle';
     ctx.fillText(cfg.badge, cx, y + baseH - 5.5);
 
-    // 9. Base HP Gauge Segments at top
+    // 9. Prominent High-Contrast Base HP Armored Gauge & Overhead Status
     const maxHp = cfg.maxHp;
-    const pipW = Math.min(6, (baseW - 16) / maxHp - 1.5);
-    const startX = cx - (maxHp * (pipW + 1.5)) / 2;
+    const isCritical = this.baseHp === 1 && maxHp > 1;
+
+    // --- A. Floating Overhead Tactical Base Health Telemetry (y - 10) ---
+    ctx.save();
+    const baseBarW = 54;
+    const baseBarH = 7;
+    const baseBarX = cx - baseBarW / 2;
+    const baseBarY = y - 11;
+
+    // Tactical Label above overhead bar
+    ctx.font = '900 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const hpRatio = this.baseHp / maxHp;
+    const labelText = isCritical
+      ? '⚠️ CĂN CỨ: 1 HP!'
+      : `🏰 CĂN CỨ: ${this.baseHp}/${maxHp}`;
+
+    // Deep black outline stroke for 100% legibility on any background
+    ctx.strokeStyle = '#020617';
+    ctx.lineWidth = 3;
+    ctx.strokeText(labelText, cx, baseBarY - 1.5);
+    ctx.fillStyle = isCritical
+      ? (Math.floor(time * 1000 / 200) % 2 === 0 ? '#ef4444' : '#fca5a5')
+      : (hpRatio > 0.5 ? '#facc15' : '#f97316');
+    ctx.fillText(labelText, cx, baseBarY - 1.5);
+
+    // Deep Drop Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillRect(baseBarX - 1.5, baseBarY - 1.5, baseBarW + 3, baseBarH + 3);
+
+    // Dark Plate
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(baseBarX, baseBarY, baseBarW, baseBarH);
+
+    // Tier/Warning Border
+    ctx.strokeStyle = isCritical
+      ? (Math.floor(time * 1000 / 200) % 2 === 0 ? '#ef4444' : '#f59e0b')
+      : cfg.color;
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(baseBarX - 0.5, baseBarY - 0.5, baseBarW + 1, baseBarH + 1);
+
+    // Segmented Base HP blocks
+    const baseSegGap = 1.5;
+    const baseSegW = (baseBarW - 3 - (maxHp - 1) * baseSegGap) / maxHp;
     for (let i = 0; i < maxHp; i++) {
-      ctx.fillStyle = i < this.baseHp ? (this.baseHp === 1 ? '#ef4444' : '#22c55e') : '#334155';
-      ctx.fillRect(startX + i * (pipW + 1.5), y + 3.5, pipW, 2.5);
+      const sx = baseBarX + 1.5 + i * (baseSegW + baseSegGap);
+      if (i < this.baseHp) {
+        if (isCritical) {
+          ctx.fillStyle = Math.floor(time * 1000 / 200) % 2 === 0 ? '#ef4444' : '#f87171';
+        } else if (hpRatio > 0.5) {
+          ctx.fillStyle = '#10b981'; // Emerald healthy
+        } else {
+          ctx.fillStyle = '#f59e0b'; // Amber damaged
+        }
+        ctx.fillRect(sx, baseBarY + 1.2, baseSegW, baseBarH - 2.4);
+
+        // Top specular highlight rim
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.fillRect(sx, baseBarY + 1.2, baseSegW, 1);
+      } else {
+        // Depleted health segment
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(sx, baseBarY + 1.2, baseSegW, baseBarH - 2.4);
+      }
     }
+    ctx.restore();
 
     // 10. Heavy Base Auto-Turret (if Tier >= 3)
     if (cfg.hasAutoTurret) {
@@ -3074,37 +3203,95 @@ export class GameEngine {
       ctx.restore();
     }
 
-    // 5. Military Segmented HP Bar (for multi-HP units: Player, Boss, Heavy, Assault)
-    if (tank.maxHp > 1 && (tank.hp < tank.maxHp || isBoss || tank.type === 'HEAVY')) {
-      const barW = Math.max(26, tank.width);
-      const barH = 4;
-      const barX = cx - barW / 2;
-      const barY = cy - halfH - 9;
+    // 5. High-Visibility Segmented Overhead HP Bar (Visible & Crisp on ALL tanks)
+    const isPlayer = tank.isPlayer;
+    const barW = isPlayer ? 32 : (isBoss ? 42 : (tank.type === 'HEAVY' ? 30 : (tank.maxHp > 1 ? 26 : 22)));
+    const barH = isPlayer ? 5 : (isBoss ? 5.5 : 4.5);
+    const barX = cx - barW / 2;
+    const barY = cy - halfH - (isPlayer ? 11 : (isBoss ? 12 : 9));
 
-      ctx.save();
-      // Drop shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.fillRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
+    ctx.save();
 
-      // Bar container
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(barX, barY, barW, barH);
-
-      // Health Segments
-      const segGap = 1;
-      const segW = (barW - (tank.maxHp - 1) * segGap) / tank.maxHp;
-      for (let i = 0; i < tank.maxHp; i++) {
-        const sx = barX + i * (segW + segGap);
-        if (i < tank.hp) {
-          const hpRatio = tank.hp / tank.maxHp;
-          ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#eab308' : '#ef4444');
-        } else {
-          ctx.fillStyle = '#334155';
-        }
-        ctx.fillRect(sx, barY, segW, barH);
-      }
-      ctx.restore();
+    // Player Extra Lives Indicator (Mạng sống dự phòng) rendered directly beside player's HP bar
+    if (isPlayer && this.stats.lives !== undefined) {
+      ctx.font = '900 8.5px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const livesText = `★${this.stats.lives}`;
+      ctx.strokeStyle = '#020617';
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(livesText, barX - 10, barY + barH / 2);
+      ctx.fillStyle = '#facc15';
+      ctx.fillText(livesText, barX - 10, barY + barH / 2);
     }
+
+    // Heavy Drop Shadow for guaranteed legibility across any ground texture
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+    // Deep Dark Background Plate
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(barX, barY, barW, barH);
+
+    // Dynamic Outline (Shield aura for player, golden for boss, crisp black for standard)
+    if (isPlayer && tank.shieldTime > 0) {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
+    } else if (isBoss) {
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
+    } else {
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(barX, barY, barW, barH);
+    }
+
+    // Health Segments
+    const segGap = tank.maxHp > 1 ? 1 : 0;
+    const segW = (barW - 2 - (tank.maxHp - 1) * segGap) / tank.maxHp;
+    for (let i = 0; i < tank.maxHp; i++) {
+      const sx = barX + 1 + i * (segW + segGap);
+      if (i < tank.hp) {
+        if (isPlayer) {
+          const hpRatio = tank.hp / tank.maxHp;
+          if (tank.hp === 1 && tank.maxHp > 1) {
+            // Urgent flashing crimson when down to last 1 HP
+            ctx.fillStyle = Math.floor(time / 160) % 2 === 0 ? '#ef4444' : '#fca5a5';
+          } else if (hpRatio > 0.5) {
+            ctx.fillStyle = '#10b981'; // Emerald Green
+          } else if (hpRatio > 0.25) {
+            ctx.fillStyle = '#f59e0b'; // Amber
+          } else {
+            ctx.fillStyle = '#ef4444'; // Red
+          }
+        } else {
+          // Enemies
+          if (isFrozen) {
+            ctx.fillStyle = '#38bdf8'; // Frozen Ice Blue
+          } else if (isBoss) {
+            const bossRatio = tank.hp / tank.maxHp;
+            ctx.fillStyle = bossRatio > 0.5 ? '#f97316' : (bossRatio > 0.25 ? '#ef4444' : '#b91c1c');
+          } else if (tank.maxHp > 1) {
+            const enemyRatio = tank.hp / tank.maxHp;
+            ctx.fillStyle = enemyRatio > 0.5 ? '#f97316' : '#ef4444';
+          } else {
+            ctx.fillStyle = '#ef4444'; // Basic & Scout 1-HP tanks
+          }
+        }
+        ctx.fillRect(sx, barY + 1, segW, barH - 2);
+
+        // Specular 3D highlight gloss on top edge of active segment
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(sx, barY + 1, segW, 0.8);
+      } else {
+        // Depleted health slot
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(sx, barY + 1, segW, barH - 2);
+      }
+    }
+    ctx.restore();
 
     ctx.restore();
   }
@@ -3540,6 +3727,78 @@ export class GameEngine {
     this.stats.canUpgradeBase = this.baseTier < 5 && this.stats.score >= cfg.upgradeCost;
     this.stats.weather = weatherSystem.currentWeather;
     this.stats.isWeatherEnabled = weatherSystem.isEnabled;
+
+    // Calculate real-time dynamic combat telemetry
+    const tierIndex = this.player ? Math.min(this.player.tier, PLAYER_TIERS.length - 1) : 0;
+    const tierCfg = PLAYER_TIERS[tierIndex];
+    const speedBoostActive = this.speedBoostTimer > 0;
+    const currentSpeed = this.player ? this.player.speed : (tierCfg.speed + (speedBoostActive ? 35 : 0));
+    const reloadTime = this.player ? this.player.reloadMax : (speedBoostActive ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax);
+    const fireRate = Math.round((1 / Math.max(0.05, reloadTime)) * 10) / 10;
+    const bulletSpeed = Math.round(tierCfg.bulletSpeed * (speedBoostActive ? 1.15 : 1.0));
+
+    this.stats.combatStats = {
+      speed: Math.round(currentSpeed),
+      baseSpeed: tierCfg.speed,
+      speedBoostActive,
+      speedBoostRemaining: Math.round(this.speedBoostTimer * 10) / 10,
+      bulletSpeed,
+      reloadMax: Math.round(reloadTime * 100) / 100,
+      fireRate,
+      doubleShot: tierCfg.doubleShot,
+      canBreakSteel: tierCfg.canBreakSteel,
+      tier: tierIndex + 1,
+      tierName: tierCfg.name,
+    };
+
+    // Calculate active power-up buffs with live countdowns
+    const activeBuffs: ActiveBuffInfo[] = [];
+
+    if (this.speedBoostTimer > 0) {
+      activeBuffs.push({
+        id: 'speed_boost',
+        type: 'SPEED',
+        label: 'TĂNG TỐC (+35 Tốc Chạy & +25% Tốc Bắn)',
+        remaining: Math.round(this.speedBoostTimer * 10) / 10,
+        maxDuration: 8.0,
+        color: '#facc15',
+      });
+    }
+
+    if (this.player && this.player.shieldTime > 0) {
+      activeBuffs.push({
+        id: 'player_shield',
+        type: 'SHIELD',
+        label: 'KHIÊN BẤT TỬ (Bảo vệ tuyệt đối)',
+        remaining: Math.round(this.player.shieldTime * 10) / 10,
+        maxDuration: 10.0,
+        color: '#38bdf8',
+      });
+    }
+
+    if (this.clockFreezeTimer > 0) {
+      activeBuffs.push({
+        id: 'clock_freeze',
+        type: 'CLOCK',
+        label: 'ĐÓNG BĂNG ĐỊCH (Toàn bộ địch tê liệt)',
+        remaining: Math.round(this.clockFreezeTimer * 10) / 10,
+        maxDuration: 7.0,
+        color: '#67e8f9',
+      });
+    }
+
+    if (this.shovelTimer > 0) {
+      activeBuffs.push({
+        id: 'shovel_fortress',
+        type: 'SHOVEL',
+        label: 'CÔNG SỰ THÉP (Tường căn cứ bọc thép)',
+        remaining: Math.round(this.shovelTimer * 10) / 10,
+        maxDuration: 16.0,
+        color: '#94a3b8',
+      });
+    }
+
+    this.stats.activeBuffs = activeBuffs;
 
     if (this.onStatsUpdate) {
       const remainingEnemies = this.enemyQueue.length + this.enemies.length;

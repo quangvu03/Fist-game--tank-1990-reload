@@ -39,7 +39,7 @@ export function GameOverModal({
             {isVictory
               ? 'TOÀN THẮNG CHIẾN DỊCH!'
               : isStageClear
-              ? `VƯỢT QUA MÀN ${stats.stage}!`
+              ? `VƯỢT QUA LEVEL ${stats.stage}!`
               : stats.baseHp <= 0
               ? 'SỞ CHỈ HUY BỊ HỦY DIỆT!'
               : 'XE TĂNG BỊ PHÁ HỦY!'}
@@ -102,7 +102,7 @@ export function GameOverModal({
           <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2.5 mb-5 text-xs text-emerald-300 flex items-center justify-between">
             <span className="font-semibold flex items-center gap-1.5">
               <span>🏰</span>
-              <span>LỚP BẢO VỆ CĂN CỨ MÀN {stats.stage + 1}:</span>
+              <span>LỚP BẢO VỆ CĂN CỨ LEVEL ${stats.stage + 1}:</span>
             </span>
             <span className="font-bold text-amber-300 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-700">
               {stats.stage + 1 >= 9
@@ -126,7 +126,7 @@ export function GameOverModal({
               className="flex items-center justify-center gap-2 w-full py-3 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg transition-colors cursor-pointer"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>TIẾN VÀO MÀN TIẾP THEO (MÀN {stats.stage + 1})</span>
+              <span>TIẾN VÀO LEVEL TIẾP THEO (LEVEL {stats.stage + 1})</span>
             </button>
           ) : (
             <button

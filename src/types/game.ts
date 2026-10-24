@@ -189,4 +189,5 @@ export interface GameStats {
   isWeatherEnabled: boolean;
   combatStats: PlayerCombatStats;
   activeBuffs: ActiveBuffInfo[];
+  zoom?: number;
 }

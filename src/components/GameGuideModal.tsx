@@ -6,27 +6,19 @@ import {
   Castle,
   ArrowUpCircle,
   Skull,
-  Trophy,
   Compass,
-  Crosshair,
-  Tv,
   Volume2,
   Pause,
   Sun,
-  CloudRain,
-  Snowflake,
-  BookOpen,
   Zap,
   Bomb,
   Clock,
-  HelpCircle,
   Layers,
-  Cross,
   Star,
   Gauge,
   Flame,
-  Award,
   Sparkles,
+  Maximize2,
 } from 'lucide-react';
 
 interface GameGuideModalProps {
@@ -50,18 +42,18 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
         className="relative w-full max-w-2xl max-h-[90vh] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-white"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-950/70 shrink-0">
+        {/* Tiêu đề modal */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/70 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <BookOpen className="w-4 h-4" />
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-black tracking-wide text-white">
                 SỔ TAY TÁC CHIẾN & TRA CỨU BIỂU TƯỢNG
               </h2>
               <p className="text-[11px] text-slate-400">
-                Chi tiết toàn bộ icon, hộp tiếp tế, xe tăng và công sự trong game
+                Chi tiết toàn bộ biểu tượng, vật phẩm tiếp tế, chiến xa và công sự trong trận
               </p>
             </div>
           </div>
@@ -75,18 +67,18 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Danh mục menu - 100% TIẾNG VIỆT THUẦN TÚY */}
         <div className="flex items-center gap-1 px-4 py-2 bg-slate-950/50 border-b border-slate-800/80 overflow-x-auto scrollbar-none shrink-0 text-xs">
           <button
             onClick={() => setActiveTab('HUD')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'HUD'
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                ? 'bg-rose-500 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Heart className="w-3.5 h-3.5" />
-            <span>Thanh Chỉ Số (HUD)</span>
+            <Heart className="w-3.5 h-3.5 fill-current" />
+            <span>Trạng Thái</span>
           </button>
 
           <button
@@ -110,7 +102,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
             }`}
           >
             <Star className="w-3.5 h-3.5" />
-            <span>Hộp Tiếp Tế (Item)</span>
+            <span>Vật Phẩm Tiếp Tế</span>
           </button>
 
           <button
@@ -146,56 +138,59 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
-            <span>Phím Tắt & Nút Bấm</span>
+            <span>Hướng Dẫn Điều Khiển</span>
           </button>
         </div>
 
-        {/* Tab Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
-          {/* TAB 1: HUD & Chỉ số */}
+        {/* Nội dung chi tiết - Đảm bảo responsive và không tràn lề */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 space-y-3.5 text-xs min-w-0">
+          {/* MỤC 1: Trạng Thái */}
           {activeTab === 'HUD' && (
-            <div className="space-y-3">
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+            <div className="space-y-3 min-w-0">
+              {/* Mạng sống hình trái tim */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-500 shrink-0 mt-0.5">
-                  <Heart className="w-4 h-4 fill-rose-500" />
+                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">HP Chiến Xa (Player HP)</span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-950 text-rose-300 border border-rose-800">
+                <div className="min-w-0 flex-1 break-words">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-white">Mạng Sống Dự Phòng (Biểu Tượng Trái Tim Đỏ)</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1">
+                      <Heart className="w-2.5 h-2.5 fill-rose-400 text-rose-400" /> 3
+                    </span>
+                  </div>
+                  <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
+                    Biểu thị số lượt hồi sinh dự phòng của bạn, hiển thị bằng <b>trái tim màu đỏ</b> trên thanh trạng thái và ngay trên nóc chiến xa. Bắt đầu với 3 mạng. Mỗi lần xe bị bắn hạ sẽ tiêu hao 1 mạng để hồi sinh với khiên bảo hộ. Hết mạng là thua cuộc!
+                  </p>
+                </div>
+              </div>
+
+              {/* Máu chiến xa trên thân xe */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0 mt-0.5">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1 break-words">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-white">Thanh Sinh Lực (HP) Trực Tiếp Trên Nóc Xe</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">
                       3/3 HP
                     </span>
                   </div>
                   <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
-                    Thể hiện lượng máu sinh lực của xe tăng bạn đang lái. Bắt đầu với 3 HP ở Cấp 1, và tăng lên đến 6 HP ở xe Cấp 4. Khi bị bắn trúng sẽ giảm HP, nếu còn 1 HP xe sẽ bốc lửa cảnh báo.
+                    Thanh máu được gắn gọn gàng ngay trên thân mỗi xe tăng (xanh lá đầy máu, vàng khi bị thương, đỏ kèm hiệu ứng khói lửa khi còn 1 HP). Xe nâng cấp lên Cấp 4 sẽ có tối đa tới 6 HP!
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0 mt-0.5">
-                  <Shield className="w-4 h-4 fill-emerald-400/20" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">Mạng Sống (Lives)</span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">
-                      MẠNG 3
-                    </span>
-                  </div>
-                  <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
-                    Số lượt xuất kích dự phòng của bạn. Mặc định bạn có 3 mạng. Mỗi lần xe bị bắn nổ hết HP, bạn sẽ tiêu hao 1 mạng để hồi sinh với khiên bảo vệ tạm thời. Hết mạng là thua cuộc!
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+              {/* Căn cứ chỉ huy */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0 mt-0.5">
                   <Castle className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">Căn Cứ Chỉ Huy (HQ Base HP)</span>
+                <div className="min-w-0 flex-1 break-words">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-white">Căn Cứ Chỉ Huy (Sở Chỉ Huy Đại Bàng)</span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-950 text-amber-300 border border-amber-800">
                       C1 (2/2 HP)
                     </span>
@@ -206,13 +201,14 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+              {/* Màn chắn năng lượng căn cứ */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shrink-0 mt-0.5">
                   <Shield className="w-4 h-4 fill-cyan-400/20" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">Màn Chắn Lực Trường Căn Cứ (Base Shield)</span>
+                <div className="min-w-0 flex-1 break-words">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-white">Màn Chắn Lực Trường Căn Cứ</span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800">
                       50 - 280 HP
                     </span>
@@ -223,12 +219,13 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+              {/* Nâng cấp căn cứ */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 shrink-0 mt-0.5">
                   <ArrowUpCircle className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1 break-words">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-sm text-white">Nút Nâng Cấp Căn Cứ (Phím U)</span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500 text-slate-950 font-bold">
                       NÂNG CẤP 800đ
@@ -240,53 +237,53 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3">
+              {/* Quân địch còn lại */}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 shrink-0 mt-0.5">
                   <Skull className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">Quân Địch Còn Lại</span>
+                <div className="min-w-0 flex-1 break-words">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-white">Quân Địch Còn Lại & Điểm Số</span>
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-900 text-white font-bold">
                       ĐỊCH: 20
                     </span>
                   </div>
                   <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
-                    Tổng số lượng chiến xa địch còn lại trong màn chơi (bao gồm cả xe đang tuần tra trên bản đồ và xe đang xếp hàng đợi xuất kích). Tiêu diệt hết số này để giành chiến thắng màn!
+                    Tổng số lượng chiến xa địch còn lại trong màn chơi. Điểm số chiến đấu được hiển thị nổi bật ở góc phải thanh trạng thái, dùng để so sánh thành tích và nâng cấp căn cứ.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB: Tốc độ & Hỏa Lực (Stats & Telemetry Codex) */}
+          {/* MỤC 2: Tốc Độ & Hỏa Lực */}
           {activeTab === 'STATS' && (
-            <div className="space-y-3.5">
-              {/* Highlight Announcement */}
-              <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/20 to-slate-950 border border-amber-500/40 rounded-xl p-3.5 flex items-start gap-3">
+            <div className="space-y-3.5 min-w-0">
+              <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/20 to-slate-950 border border-amber-500/40 rounded-xl p-3.5 flex items-start gap-3 min-w-0">
                 <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
                   <Gauge className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1 break-words">
                   <h3 className="font-black text-sm text-amber-300">
-                    BẢNG THÔNG SỐ TÁC CHIẾN THỜI GIAN THỰC (LIVE TELEMETRY)
+                    BẢNG THÔNG SỐ TÁC CHIẾN THỜI GIAN THỰC
                   </h3>
                   <p className="text-slate-300 mt-1 text-[11px] leading-relaxed">
-                    Trò chơi hiện hiển thị chi tiết <b>Tốc độ chạy</b>, <b>Tốc độ bắn</b>, <b>Vận tốc đạn</b> và <b>Thời gian hiệu lực vật phẩm</b> ngay trên thanh công cụ tác chiến phía trên và chân trang. Mỗi khi bạn nhặt <b>⭐ Ngôi Sao</b> hoặc <b>⚡ Tăng Tốc</b>, các con số này sẽ lập tức tăng vọt trong thời gian thực!
+                    Trò chơi hiển thị chi tiết <b>Tốc độ di chuyển</b>, <b>Tốc độ bắn</b>, <b>Vận tốc đạn</b> và <b>Thời gian hiệu lực vật phẩm</b>. Mỗi khi bạn nhặt <b>⭐ Ngôi Sao</b> hoặc <b>⚡ Tăng Tốc</b>, các con số này sẽ lập tức tăng vọt trong thời gian thực!
                   </p>
                 </div>
               </div>
 
               {/* 4 Cấp Độ Xe Tăng Chi Tiết */}
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
                   CHỈ SỐ THEO 4 CẤP BẬC CHIẾN XA (C1 → C4)
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0">
                   {/* Tier 1 */}
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5 min-w-0">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded bg-emerald-500/20 text-emerald-400 font-black flex items-center justify-center text-[10px]">C1</span>
@@ -301,7 +298,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Tốc độ bắn:</span>
-                        <span className="font-mono font-bold text-orange-300">2.2 phát/s (0.45s)</span>
+                        <span className="font-mono font-bold text-orange-300">2.2 phát/s</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Vận tốc đạn:</span>
@@ -315,7 +312,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                   </div>
 
                   {/* Tier 2 */}
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5 min-w-0">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded bg-sky-500/20 text-sky-400 font-black flex items-center justify-center text-[10px]">C2</span>
@@ -330,7 +327,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Tốc độ bắn:</span>
-                        <span className="font-mono font-bold text-orange-300">2.9 phát/s <span className="text-[9px] text-emerald-400">(0.35s)</span></span>
+                        <span className="font-mono font-bold text-orange-300">2.9 phát/s <span className="text-[9px] text-emerald-400">(nhanh)</span></span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Vận tốc đạn:</span>
@@ -338,13 +335,13 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                       </div>
                       <div className="flex justify-between text-[10px] text-slate-400 pt-0.5">
                         <span>Hỏa lực:</span>
-                        <span>Nòng hãm giật phản lực</span>
+                        <span>Nòng phản lực tăng tốc</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Tier 3 */}
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5 min-w-0">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 font-black flex items-center justify-center text-[10px]">C3</span>
@@ -359,7 +356,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Tốc độ bắn:</span>
-                        <span className="font-mono font-bold text-orange-300">3.6 phát/s <span className="text-[9px] text-emerald-400">(0.28s)</span></span>
+                        <span className="font-mono font-bold text-orange-300">3.6 phát/s <span className="text-[9px] text-emerald-400">(rất nhanh)</span></span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Vận tốc đạn:</span>
@@ -373,13 +370,13 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                   </div>
 
                   {/* Tier 4 */}
-                  <div className="bg-slate-950/70 border border-amber-500/40 rounded-xl p-3 space-y-1.5 bg-gradient-to-br from-amber-950/20 to-slate-950">
+                  <div className="bg-slate-950/70 border border-amber-500/40 rounded-xl p-3 space-y-1.5 bg-gradient-to-br from-amber-950/20 to-slate-950 min-w-0">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded bg-rose-500/20 text-rose-400 font-black flex items-center justify-center text-[10px]">C4</span>
                         <span className="font-bold text-amber-300 text-xs">Chiến Xa Phá Thép</span>
                       </div>
-                      <span className="font-mono text-[10px] text-amber-400 font-black">6 HP (MAX)</span>
+                      <span className="font-mono text-[10px] text-amber-400 font-black">6 HP (TỐI ĐA)</span>
                     </div>
                     <div className="space-y-1 text-[11px] text-slate-300">
                       <div className="flex justify-between">
@@ -388,7 +385,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Tốc độ bắn:</span>
-                        <span className="font-mono font-bold text-orange-300">4.5 phát/s <span className="text-[9px] text-emerald-400">(0.22s)</span></span>
+                        <span className="font-mono font-bold text-orange-300">4.5 phát/s <span className="text-[9px] text-emerald-400">(cực nhanh)</span></span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Vận tốc đạn:</span>
@@ -396,37 +393,37 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                       </div>
                       <div className="flex justify-between text-[10px] text-rose-400 font-bold pt-0.5">
                         <span>Hỏa lực:</span>
-                        <span>🔥 Phá hủy xuyên tường thép</span>
+                        <span>🔥 Bắn phá xuyên thủng tường thép</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Tác dụng của Hộp Tiếp Tế Tăng Tốc ⚡ SPEED */}
-              <div className="bg-slate-950/80 border border-amber-500/50 rounded-xl p-3.5 space-y-2">
+              {/* Tác dụng của Hộp Tiếp Tế Tăng Tốc */}
+              <div className="bg-slate-950/80 border border-amber-500/50 rounded-xl p-3.5 space-y-2 min-w-0">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-base">
                     ⚡
                   </div>
-                  <div>
-                    <h4 className="font-bold text-amber-300 text-xs">HỘP TIẾP TẾ TĂNG TỐC ĐIỆN TỪ (SPEED POWER-UP)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-amber-300 text-xs">HỘP TIẾP TẾ TĂNG TỐC ĐIỆN TỪ</h4>
                     <p className="text-slate-400 text-[10px]">Kích hoạt tức thì trong 8 giây khi xe chạm vào hộp tiếp tế hình tia sét</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
-                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] min-w-0">
+                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg min-w-0">
                     <span className="text-slate-400 block text-[10px]">Tốc độ chạy:</span>
                     <span className="font-mono font-bold text-amber-300 text-xs">+35 px/s</span>
                     <p className="text-slate-400 text-[9.5px] mt-0.5">Cơ động luồn lách né tránh đạn pháo địch cực nhanh.</p>
                   </div>
-                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg min-w-0">
                     <span className="text-slate-400 block text-[10px]">Tốc độ bắn:</span>
                     <span className="font-mono font-bold text-orange-300 text-xs">+25% Nhanh hơn</span>
                     <p className="text-slate-400 text-[9.5px] mt-0.5">Rút ngắn thời gian nạp đạn, xả đạn dồn dập áp đảo đối phương.</p>
                   </div>
-                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+                  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg min-w-0">
                     <span className="text-slate-400 block text-[10px]">Vận tốc đạn:</span>
                     <span className="font-mono font-bold text-cyan-300 text-xs">+15% Tốc độ bay</span>
                     <p className="text-slate-400 text-[9.5px] mt-0.5">Đạn bay tới mục tiêu nhanh hơn, đối phương khó né tránh.</p>
@@ -434,98 +431,98 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                 </div>
 
                 <div className="text-[10px] text-amber-200/90 pt-1 border-t border-slate-800/80">
-                  ⏱️ <b>Đếm lùi trực tiếp:</b> Khi ăn vật phẩm ⚡, trên thanh HUD sẽ hiển thị thẻ đếm lùi thời gian (ví dụ: <code className="bg-slate-900 px-1 py-0.5 rounded text-amber-400">+35 ⚡ 7.4s</code>) để bạn kiểm soát nhịp độ chiến thuật!
+                  ⏱️ <b>Đếm lùi trực tiếp:</b> Khi ăn vật phẩm ⚡, trên thanh thông số sẽ hiển thị thẻ đếm lùi thời gian để bạn kiểm soát nhịp độ chiến thuật!
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: Hộp tiếp tế (Items / Power-ups) */}
+          {/* MỤC 3: Vật Phẩm Tiếp Tế */}
           {activeTab === 'ITEMS' && (
-            <div className="space-y-3">
+            <div className="space-y-3 min-w-0">
               <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-300">
                 💡 <b>Mẹo thu thập:</b> Hộp tiếp tế quân sự ngẫu nhiên sẽ xuất hiện khi bạn bắn hạ các xe địch mang hàng tiếp tế (xe nhấp nháy phát sáng vàng). Bạn chỉ cần lái xe tăng chạm vào hộp để kích hoạt!
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg shrink-0">
                     ⭐
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">NGÔI SAO TĂNG CẤP (STAR)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">NGÔI SAO THĂNG CẤP</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Nâng cấp pháo của xe tăng: Tăng tốc độ bắn, tăng tốc độ xe, bắn đạn song nòng và tối đa có thể bắn thủng tường thép!
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-lg shrink-0">
                     🛡️
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">KHIÊN BẢO HỘ (SHIELD)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">KHIÊN BẢO HỘ LỰC TRƯỜNG</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Bao bọc xe tăng trong màng chắn từ trường bất khả xâm phạm trong 10 giây, miễn nhiễm với mọi làn đạn của địch.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/40 flex items-center justify-center text-red-400 text-lg shrink-0">
                     💣
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">BOM HỦY DIỆT (BOMB)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">BOM HẠT NHÂN HỦY DIỆT</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Kích hoạt xung nổ toàn diện phá hủy tức thì tất cả xe tăng địch đang có mặt trên bản đồ và nhận trọn điểm thưởng!
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/40 flex items-center justify-center text-sky-400 text-lg shrink-0">
                     ⏰
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">ĐỒNG HỒ CHRONO (CLOCK)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">ĐỒNG HỒ ĐÓNG BĂNG THỜI GIAN</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Đóng băng toàn bộ hoạt động của quân địch trong 10 giây. Địch bị đóng băng không thể di chuyển hay nã đạn.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-stone-500/10 border border-stone-500/40 flex items-center justify-center text-stone-300 text-lg shrink-0">
                     🏰
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">CÔNG SỰ BẢO VỆ (FORTRESS)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">CÔNG SỰ THÉP CỨU NGUY</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Gia cố và hồi sinh ngay lập tức toàn bộ tường bảo vệ quanh căn cứ thành tường thép kiên cố trong 20 giây.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0">
                     ❤️
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">CỨU THƯƠNG DÃ CHIẾN (HEART)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">CỨU THƯƠNG DÃ CHIẾN</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Hồi phục toàn bộ thanh HP của xe tăng và cộng thêm 1 mạng dự phòng quý giá giúp bạn trụ vững trên chiến trường.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 sm:col-span-2">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-3 sm:col-span-2 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-300 text-lg shrink-0">
                     ⚡
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-xs">TĂNG TỐC ĐIỆN TỪ (SPEED)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-white text-xs">TĂNG TỐC ĐỘNG CƠ ĐIỆN TỪ</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5">
                       Tăng 25% tốc độ di chuyển và thời gian nạp đạn nhanh hơn, giúp bạn cơ động né đạn và bắn dồn ép quân thù.
                     </p>
@@ -535,157 +532,157 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
             </div>
           )}
 
-          {/* TAB 3: Chủng loại xe tăng địch */}
+          {/* MỤC 4: Chiến Xa Địch */}
           {activeTab === 'ENEMIES' && (
-            <div className="space-y-2.5">
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md bg-cyan-500 flex items-center justify-center text-slate-950 font-black text-[10px]">
+            <div className="space-y-2.5 min-w-0">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-6 h-6 rounded-md bg-cyan-500 flex items-center justify-center text-slate-950 font-black text-[10px] shrink-0">
                     1
                   </span>
-                  <div>
-                    <h4 className="font-bold text-cyan-400 text-xs">Xe Trinh Sát Tốc Độ (Scout)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-cyan-400 text-xs">Xe Trinh Sát Siêu Tốc</h4>
                     <p className="text-slate-400 text-[11px]">Chạy rất nhanh, bắn liên tục, máu yếu (1 HP).</p>
                   </div>
                 </div>
-                <div className="text-right font-mono">
+                <div className="text-right font-mono shrink-0 pl-2">
                   <span className="text-amber-300 font-bold">+100 điểm</span>
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md bg-amber-500 flex items-center justify-center text-slate-950 font-black text-[10px]">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-6 h-6 rounded-md bg-amber-500 flex items-center justify-center text-slate-950 font-black text-[10px] shrink-0">
                     2
                   </span>
-                  <div>
-                    <h4 className="font-bold text-amber-400 text-xs">Chiến Xa Đột Kích (Assault)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-amber-400 text-xs">Chiến Xa Đột Kích Cơ Động</h4>
                     <p className="text-slate-400 text-[11px]">Hỏa lực đều đặn, cơ động và bền bỉ (2 HP).</p>
                   </div>
                 </div>
-                <div className="text-right font-mono">
+                <div className="text-right font-mono shrink-0 pl-2">
                   <span className="text-amber-300 font-bold">+200 điểm</span>
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md bg-red-500 flex items-center justify-center text-white font-black text-[10px]">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-6 h-6 rounded-md bg-red-500 flex items-center justify-center text-white font-black text-[10px] shrink-0">
                     4
                   </span>
-                  <div>
-                    <h4 className="font-bold text-red-400 text-xs">Thiết Giáp Hạng Nặng (Heavy)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-red-400 text-xs">Thiết Giáp Bọc Thép Hạng Nặng</h4>
                     <p className="text-slate-400 text-[11px]">Bọc giáp dày cộm, chịu tới 4 phát đạn pháo (4 HP).</p>
                   </div>
                 </div>
-                <div className="text-right font-mono">
+                <div className="text-right font-mono shrink-0 pl-2">
                   <span className="text-amber-300 font-bold">+400 điểm</span>
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md bg-purple-500 flex items-center justify-center text-white font-black text-[10px]">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-6 h-6 rounded-md bg-purple-500 flex items-center justify-center text-white font-black text-[10px] shrink-0">
                     3
                   </span>
-                  <div>
-                    <h4 className="font-bold text-purple-400 text-xs">Pháo Tự Hành Phóng Tên Lửa (Artillery)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-purple-400 text-xs">Pháo Tự Hành Tên Lửa Tầm Xa</h4>
                     <p className="text-slate-400 text-[11px]">Bắn tên lửa nổ mạnh, có tia laser đỏ cảnh báo hướng ngắm (3 HP).</p>
                   </div>
                 </div>
-                <div className="text-right font-mono">
+                <div className="text-right font-mono shrink-0 pl-2">
                   <span className="text-amber-300 font-bold">+500 điểm</span>
                 </div>
               </div>
 
-              <div className="bg-rose-950/20 border border-rose-500/40 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md bg-rose-600 flex items-center justify-center text-white font-black text-[10px]">
+              <div className="bg-rose-950/20 border border-rose-500/40 rounded-xl p-3 flex items-center justify-between min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-6 h-6 rounded-md bg-rose-600 flex items-center justify-center text-white font-black text-[10px] shrink-0">
                     14
                   </span>
-                  <div>
-                    <h4 className="font-bold text-rose-400 text-xs">Chiến Hạm Titan Tối Thượng (Boss)</h4>
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-rose-400 text-xs">Siêu Chiến Hạm Titan Tối Thượng (Trùm)</h4>
                     <p className="text-slate-300 text-[11px]">Siêu pháo đài khổng lồ 4 xích, nòng đôi phá thủng thép, cực kỳ nguy hiểm (14 HP).</p>
                   </div>
                 </div>
-                <div className="text-right font-mono">
+                <div className="text-right font-mono shrink-0 pl-2">
                   <span className="text-amber-300 font-bold">+1,500 điểm</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 4: Địa hình & Căn cứ */}
+          {/* MỤC 5: Địa Hình & Căn Cứ - KHÔNG BỊ TRÀN RA NGOÀI */}
           {activeTab === 'TILES' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+            <div className="space-y-3 min-w-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
                   <div className="w-8 h-8 rounded-lg bg-amber-900/40 border border-amber-700/60 flex items-center justify-center text-amber-500 font-bold text-sm shrink-0">
                     📦
                   </div>
-                  <div>
-                    <h4 className="font-bold text-amber-400 text-xs">Thùng Gỗ Quân Sự (Crate)</h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-amber-400 text-xs">Thùng Gỗ Quân Sự</h4>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
                       Vật cản cơ bản, có thể bắn phá dọn đường bằng 1 phát đạn hoặc ẩn nấp né tránh hỏa lực địch.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
                   <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-slate-300 font-bold text-sm shrink-0">
                     🧱
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1 break-words">
                     <h4 className="font-bold text-slate-300 text-xs">Tường Bê Tông Cốt Thép</h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
                       Rất cứng cáp, chịu được 2 phát đạn. Trúng 1 viên sẽ xuất hiện vết nứt rạn cảnh báo.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
                   <div className="w-8 h-8 rounded-lg bg-slate-700 border border-slate-500 flex items-center justify-center text-cyan-200 font-bold text-sm shrink-0">
                     ⚙️
                   </div>
-                  <div>
-                    <h4 className="font-bold text-cyan-300 text-xs">Tường Thép Hợp Kim (Steel)</h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
-                      Chống đạn thông thường hoàn toàn! Chỉ có thể bị phá hủy bởi xe tăng Người Chơi Cấp 4 hoặc xe Boss.
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-cyan-300 text-xs">Tường Thép Hợp Kim</h4>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                      Chống đạn thông thường hoàn toàn! Chỉ có thể bị phá hủy bởi xe tăng Người Chơi Cấp 4 hoặc Trùm Titan.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
                   <div className="w-8 h-8 rounded-lg bg-sky-950 border border-sky-600 flex items-center justify-center text-sky-400 font-bold text-sm shrink-0">
                     💧
                   </div>
-                  <div>
-                    <h4 className="font-bold text-sky-300 text-xs">Vùng Nước (Water)</h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-sky-300 text-xs">Vùng Đầm Lầy Nước Sâu</h4>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
                       Chiến xa không thể vượt qua, nhưng đạn pháo và tên lửa có thể bay qua bắn nhau bình thường.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
                   <div className="w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-700 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
                     🌿
                   </div>
-                  <div>
-                    <h4 className="font-bold text-emerald-300 text-xs">Bụi Cây Dã Chiến (Bush)</h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-emerald-300 text-xs">Bụi Cây Dã Chiến</h4>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
                       Cung cấp khả năng ngụy trang tác chiến. Tán cây bán trong suốt giúp người chơi vẫn nhìn rõ xe bên dưới.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
                   <div className="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-400 flex items-center justify-center text-cyan-300 font-bold text-sm shrink-0">
                     ❄️
                   </div>
-                  <div>
-                    <h4 className="font-bold text-cyan-200 text-xs">Mặt Băng (Ice)</h4>
-                    <p className="text-slate-300 text-[11px] mt-0.5">
+                  <div className="min-w-0 flex-1 break-words">
+                    <h4 className="font-bold text-cyan-200 text-xs">Mặt Đường Băng Trơn Trượt</h4>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
                       Mặt đường băng tuyết trơn trượt, làm xe bị trượt nhẹ theo đà quán tính khi rẽ ngoặt.
                     </p>
                   </div>
@@ -693,11 +690,11 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
               </div>
 
               {/* 5 Cấp độ căn cứ */}
-              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 mt-2">
-                <h4 className="font-bold text-amber-400 text-xs mb-2">HỆ THỐNG NÂNG CẤP CĂN CỨ (C1 → C5)</h4>
-                <div className="space-y-1.5 text-[11px]">
+              <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 mt-2 min-w-0 overflow-hidden">
+                <h4 className="font-bold text-amber-400 text-xs mb-2">HỆ THỐNG NÂNG CẤP CĂN CỨ (CẤP 1 → CẤP 5)</h4>
+                <div className="space-y-1.5 text-[11px] leading-relaxed text-slate-300 break-words">
                   <p>• <b>Cấp 1:</b> Tường thùng gỗ tiếp tế cơ bản (2 HP căn cứ, chưa có màn chắn).</p>
-                  <p>• <b>Cấp 2:</b> Tường bê tông gia cố chịu 2 đạn + Màn chắn năng lượng 50 HP (Hồi phục tự động).</p>
+                  <p>• <b>Cấp 2:</b> Tường bê tông gia cố chịu 2 đạn + Màn chắn năng lượng 50 HP (Tự động hồi phục).</p>
                   <p>• <b>Cấp 3:</b> Tường thép chống đạn + Màn chắn 100 HP + <b>Pháo tự động phòng thủ</b>.</p>
                   <p>• <b>Cấp 4:</b> Thành trì Titanium + Màn chắn hoàng kim 180 HP + Pháo tự động bắn nhanh.</p>
                   <p>• <b>Cấp 5:</b> Pháo đài lượng tử tối thượng + Màn chắn 280 HP siêu cứng + Pháo kép tự động.</p>
@@ -706,12 +703,12 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
             </div>
           )}
 
-          {/* TAB 5: Phím tắt & Nút bấm */}
+          {/* MỤC 6: Hướng Dẫn Điều Khiển - ĐÃ XÓA MỤC RETRO/CRT */}
           {activeTab === 'CONTROLS' && (
-            <div className="space-y-3">
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+            <div className="space-y-3 min-w-0">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5 min-w-0">
                 <h4 className="font-bold text-emerald-400 text-xs">BẢNG PHÍM ĐIỀU KHIỂN CHIẾN XA</h4>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                   <div className="flex items-center gap-2">
                     <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-white font-bold">W A S D</kbd>
                     <span className="text-slate-300">Lái xe 4 hướng</span>
@@ -725,34 +722,42 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                     <span className="text-slate-300">Nâng cấp căn cứ</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-emerald-300 font-bold">H</kbd>
+                    <span className="text-slate-300">Mở sổ tay tác chiến</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-cyan-300 font-bold">Z</kbd>
+                    <span className="text-slate-300">Phóng to tỉ lệ map (100% · 115% · 130%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-white font-bold">P / Esc</kbd>
                     <span className="text-slate-300">Tạm dừng trận đấu</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2">
-                <h4 className="font-bold text-white text-xs">CÁC NÚT CHỨC NĂNG TRÊN THANH CÔNG CỤ (GÓC TRÊN BÊN PHẢI)</h4>
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2 min-w-0">
+                <h4 className="font-bold text-white text-xs">CÁC NÚT CHỨC NĂNG TRÊN THANH CÔNG CỤ</h4>
                 <div className="space-y-2 text-[11px] text-slate-300">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1 rounded bg-slate-800 text-amber-300"><Sun className="w-3.5 h-3.5" /></div>
-                    <span><b>Nút Thời Tiết:</b> Bấm để chuyển đổi giữa <i>Quang đãng (Tắt hiệu ứng)</i> → <i>Mưa nhẹ</i> → <i>Tuyết rơi</i>.</span>
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-300 shrink-0"><Maximize2 className="w-3.5 h-3.5" /></div>
+                    <span className="break-words"><b>Tỉ Lệ Map (%):</b> Nhấp để phóng to bản đồ (100% Chuẩn → 115% Lớn → 130% Cực đại), chiến xa to rõ, chiến trường hoành tráng.</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1 rounded bg-slate-800 text-emerald-400"><Compass className="w-3.5 h-3.5" /></div>
-                    <span><b>Chế Độ Lái:</b> Đổi giữa lái <i>Phím 4 Hướng cổ điển</i> hoặc <i>Ngắm chuột 360°</i> linh hoạt.</span>
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-amber-300 shrink-0"><Sun className="w-3.5 h-3.5" /></div>
+                    <span className="break-words"><b>Nút Thời Tiết:</b> Chuyển đổi giữa <i>Quang đãng</i> → <i>Mưa nhẹ</i> → <i>Tuyết rơi</i>.</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1 rounded bg-slate-800 text-slate-300"><Tv className="w-3.5 h-3.5" /></div>
-                    <span><b>Bộ Lọc CRT:</b> Bật hoặc tắt hiệu ứng sọc quét vô tuyến kiểu máy chơi game thập niên 90.</span>
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-emerald-400 shrink-0"><Compass className="w-3.5 h-3.5" /></div>
+                    <span className="break-words"><b>Chế Độ Lái:</b> Đổi giữa lái <i>Phím 4 hướng cổ điển</i> hoặc <i>Ngắm bắn chuột 360°</i> linh hoạt.</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1 rounded bg-slate-800 text-emerald-400"><Volume2 className="w-3.5 h-3.5" /></div>
-                    <span><b>Âm Thanh:</b> Bật hoặc tắt toàn bộ tiếng súng, bom nổ và tiếng động cơ xe tăng.</span>
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-emerald-400 shrink-0"><Volume2 className="w-3.5 h-3.5" /></div>
+                    <span className="break-words"><b>Âm Thanh:</b> Bật hoặc tắt toàn bộ tiếng súng, tiếng bom nổ và tiếng động cơ xe.</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1 rounded bg-slate-800 text-white"><Pause className="w-3.5 h-3.5" /></div>
-                    <span><b>Tạm Dừng:</b> Tạm dừng trận đấu để bạn có thể nghỉ tay hoặc đổi chiến thuật.</span>
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-white shrink-0"><Pause className="w-3.5 h-3.5" /></div>
+                    <span className="break-words"><b>Tạm Dừng:</b> Tạm dừng trận đấu để bạn nghỉ tay hoặc điều chỉnh chiến thuật.</span>
                   </div>
                 </div>
               </div>
@@ -760,16 +765,16 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-slate-950/70 shrink-0 text-xs">
-          <span className="text-slate-400">
-            Bấm phím <b>P</b> hoặc <b>Esc</b> trong trận để mở lại hướng dẫn này bất cứ lúc nào.
+        {/* Chân trang */}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-slate-950/70 shrink-0 text-xs gap-3">
+          <span className="text-slate-400 text-[11px]">
+            Bấm phím <b>H</b> hoặc nút <b>Sổ Tay</b> để mở lại hướng dẫn này (Game sẽ tự động tạm dừng khi xem).
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold transition-colors cursor-pointer shrink-0"
           >
-            ĐÃ HIỂU & ĐÓNG
+            ĐÃ HIỂU & TIẾP TỤC
           </button>
         </div>
       </div>

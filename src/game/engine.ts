@@ -13,15 +13,11 @@ import {
   ControlMode,
   GameMode,
   WeatherType,
-  PlayerCombatStats,
-  ActiveBuffInfo,
 } from '../types/game';
 import {
   GRID_COLS,
   GRID_ROWS,
   TILE_SIZE,
-  CANVAS_WIDTH,
-  CANVAS_HEIGHT,
   CANVAS_SIZE,
   TANK_SIZE,
   BULLET_RADIUS,
@@ -30,7 +26,6 @@ import {
   PLAYER_TIERS,
   DIR_VECTORS,
   BASE_TIERS,
-  BASE_COORD,
   BASE_CENTER,
   BASE_SHIELD_RADIUS,
 } from './constants';
@@ -64,7 +59,6 @@ export class GameEngine {
   private wallHealthMap: Map<string, number> = new Map();
   private shovelTimer: number = 0;
   private clockFreezeTimer: number = 0;
-  private speedBoostTimer: number = 0;
 
   // Entities
   public player: Tank | null = null;
@@ -75,11 +69,11 @@ export class GameEngine {
   public powerUps: PowerUp[] = [];
   public floatTexts: FloatText[] = [];
 
-  // Spawning (Left flank, Center, Right flank across 34 columns)
+  // Spawning
   private spawnPoints = [
     { x: 1 * TILE_SIZE, y: 1 * TILE_SIZE },
-    { x: 16 * TILE_SIZE, y: 1 * TILE_SIZE },
-    { x: 31 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 12 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 23 * TILE_SIZE, y: 1 * TILE_SIZE },
   ];
   private nextSpawnIndex: number = 0;
   private spawnCooldown: number = 1.0;
@@ -113,20 +107,6 @@ export class GameEngine {
     gameMode: 'CAMPAIGN',
     weather: 'CLEAR',
     isWeatherEnabled: weatherSystem.isEnabled,
-    combatStats: {
-      speed: 110,
-      baseSpeed: 110,
-      speedBoostActive: false,
-      speedBoostRemaining: 0,
-      bulletSpeed: 260,
-      reloadMax: 0.45,
-      fireRate: 2.2,
-      doubleShot: false,
-      canBreakSteel: false,
-      tier: 1,
-      tierName: 'Pháo Cơ Bản',
-    },
-    activeBuffs: [],
   };
 
   // Juiciness & Game Feel
@@ -137,20 +117,7 @@ export class GameEngine {
 
   // Input
   private keysHeld: Record<string, boolean> = {};
-  public gridCols: number = GRID_COLS;
-  public gridRows: number = GRID_ROWS;
-  public canvasWidth: number = CANVAS_WIDTH;
-  public canvasHeight: number = CANVAS_HEIGHT;
-  public baseCenter = BASE_CENTER;
-  public scale: number = 1.0;
-  public zoom: number = 1.15; // Mặc định phóng to 115% giúp map rộng và to hơn, vừa mắt trên màn hình rộng
-  public cameraX: number = CANVAS_WIDTH / 2;
-  public cameraY: number = CANVAS_HEIGHT / 2;
-  public originX: number = 0;
-  public originY: number = 0;
-  public viewportWidth: number = CANVAS_WIDTH;
-  public viewportHeight: number = CANVAS_HEIGHT;
-  public mousePos = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+  public mousePos = { x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2 };
   private mouseAimActive: boolean = false;
 
   // Callbacks to UI
@@ -170,12 +137,6 @@ export class GameEngine {
       onStatsUpdate?: (stats: GameStats, remainingEnemies: number) => void;
       onGameOver?: (won: boolean) => void;
       onStageClear?: () => void;
-    },
-    initialProgression?: {
-      baseTier?: number;
-      playerTier?: number;
-      score?: number;
-      lives?: number;
     }
   ) {
     this.canvas = canvas;
@@ -183,33 +144,10 @@ export class GameEngine {
     if (!context) throw new Error('Could not get 2D canvas context');
     this.ctx = context;
 
-    // Load saved zoom preference (default: 1.15x for a wide, impressive map view)
-    try {
-      const savedZoom = localStorage.getItem('tank_game_zoom');
-      if (savedZoom) {
-        const parsed = parseFloat(savedZoom);
-        if (parsed >= 1.0 && parsed <= 1.4) this.zoom = parsed;
-      }
-    } catch {
-      // Ignore
-    }
-
-    this.updateViewportSize();
-
     this.currentStageConfig = stageConfig;
     this.gameMode = gameMode;
     this.stats.gameMode = gameMode;
     this.stats.stage = stageConfig.id;
-
-    if (initialProgression?.baseTier) {
-      this.baseTier = initialProgression.baseTier;
-    }
-    if (initialProgression?.score !== undefined) {
-      this.stats.score = initialProgression.score;
-    }
-    if (initialProgression?.lives !== undefined) {
-      this.stats.lives = initialProgression.lives;
-    }
 
     // Load high score
     try {
@@ -225,118 +163,15 @@ export class GameEngine {
 
     this.terrainCanvas = this.generateTerrainCanvas();
     this.initListeners();
-    this.resetStage(stageConfig, true, initialProgression?.playerTier);
+    this.resetStage(stageConfig);
   }
 
-  public setZoom(zoom: number) {
-    this.zoom = Math.max(1.0, Math.min(1.4, zoom));
-    try {
-      localStorage.setItem('tank_game_zoom', this.zoom.toString());
-    } catch {
-      // Ignore
-    }
-    this.syncStats();
-  }
-
-  public getZoom(): number {
-    return this.zoom;
-  }
-
-  public cycleZoom(): number {
-    // Cycles: 1.0 (100% Chuẩn) -> 1.15 (115% Lớn) -> 1.30 (130% Cực Đại) -> 1.0
-    const nextZoom = this.zoom < 1.08 ? 1.15 : this.zoom < 1.25 ? 1.3 : 1.0;
-    this.setZoom(nextZoom);
-    const label = nextZoom === 1.0 ? '100% (CHUẨN)' : nextZoom === 1.15 ? '115% (LỚN)' : '130% (CỰC ĐẠI)';
-    this.addFloatText(this.cameraX, this.cameraY - 40, `TỈ LỆ BẢN ĐỒ: ${label}`, '#38bdf8');
-    soundEngine.playPowerUp();
-    return nextZoom;
-  }
-
-  public updateViewportSize(dt: number = 0.016) {
-    const clientW = this.canvas.clientWidth || this.canvasWidth;
-    const clientH = this.canvas.clientHeight || this.canvasHeight;
-    if (this.canvas.width !== clientW || this.canvas.height !== clientH) {
-      this.canvas.width = clientW;
-      this.canvas.height = clientH;
-    }
-    this.viewportWidth = clientW;
-    this.viewportHeight = clientH;
-
-    // Base scale preserves 1:1 square pixel aspect ratio and fits battlefield into viewport
-    const scaleX = clientW / this.canvasWidth;
-    const scaleY = clientH / this.canvasHeight;
-    const baseScale = Math.min(scaleX, scaleY);
-    this.scale = baseScale * this.zoom;
-
-    const scaledW = this.canvasWidth * this.scale;
-    const scaledH = this.canvasHeight * this.scale;
-
-    // Target camera focus (centers on player or base when zoomed in)
-    let targetX = this.canvasWidth / 2;
-    let targetY = this.canvasHeight / 2;
-
-    if (this.zoom > 1.0 && this.player && this.player.hp > 0 && !this.isPlayerDying) {
-      targetX = this.player.x + this.player.width / 2;
-      targetY = this.player.y + this.player.height / 2;
-    } else if (this.zoom > 1.0) {
-      targetX = BASE_CENTER.x;
-      targetY = BASE_CENTER.y;
-    }
-
-    const lerpSpeed = Math.min(1.0, dt * 6.0);
-    this.cameraX += (targetX - this.cameraX) * lerpSpeed;
-    this.cameraY += (targetY - this.cameraY) * lerpSpeed;
-
-    // Horizontal origin calculation
-    if (scaledW <= clientW) {
-      this.originX = Math.round((clientW - scaledW) / 2);
-    } else {
-      const halfW = (clientW / this.scale) / 2;
-      this.cameraX = Math.max(halfW, Math.min(this.canvasWidth - halfW, this.cameraX));
-      this.originX = Math.round(clientW / 2 - this.cameraX * this.scale);
-    }
-
-    // Vertical origin calculation
-    if (scaledH <= clientH) {
-      this.originY = Math.round((clientH - scaledH) / 2);
-    } else {
-      const halfH = (clientH / this.scale) / 2;
-      this.cameraY = Math.max(halfH, Math.min(this.canvasHeight - halfH, this.cameraY));
-      this.originY = Math.round(clientH / 2 - this.cameraY * this.scale);
-    }
-
-    weatherSystem.setBounds(clientW, clientH);
-  }
-
-  public resetStage(stageConfig: StageConfig, preservePlayerUpgrade: boolean = true, forcedPlayerTier?: number) {
+  public resetStage(stageConfig: StageConfig, preservePlayerUpgrade: boolean = true) {
     this.currentStageConfig = stageConfig;
     this.stats.stage = stageConfig.id;
-    this.updateViewportSize();
 
-    // Standard symmetrical spawn points across 34-column battlefield
-    this.spawnPoints = [
-      { x: 1 * TILE_SIZE, y: 1 * TILE_SIZE },
-      { x: 16 * TILE_SIZE, y: 1 * TILE_SIZE },
-      { x: 31 * TILE_SIZE, y: 1 * TILE_SIZE },
-    ];
-
-    // Initialize 26 rows x 34 columns grid
-    this.grid = [];
-    for (let r = 0; r < GRID_ROWS; r++) {
-      this.grid[r] = new Array(GRID_COLS).fill(TileType.EMPTY);
-    }
-
-    // Map pristine stage layout into center (cols 4..29)
-    const offsetCol = Math.floor((GRID_COLS - stageConfig.grid[0].length) / 2); // 4
-    for (let r = 0; r < GRID_ROWS; r++) {
-      for (let c = 0; c < stageConfig.grid[r].length; c++) {
-        this.grid[r][offsetCol + c] = stageConfig.grid[r][c];
-      }
-    }
-
-    // Populate flanking tactical corridors (cols 0..3 and cols 30..33)
-    this.populateFlankTactics(stageConfig.id);
-    this.terrainCanvas = this.generateTerrainCanvas();
+    // Clone grid
+    this.grid = stageConfig.grid.map(row => [...row]);
 
     // Progressive base tiering based on stage advancement ("càng về sau căn cứ càng cứng hơn")
     let naturalStageTier = 1;
@@ -361,7 +196,6 @@ export class GameEngine {
     this.isPlayerDying = false;
     this.shovelTimer = 0;
     this.clockFreezeTimer = 0;
-    this.speedBoostTimer = 0;
     this.shieldOutOfCombatTimer = 10;
     this.shieldHitFlashTimer = 0;
 
@@ -377,36 +211,11 @@ export class GameEngine {
     this.trackMarks = [];
 
     // Player spawn
-    const prevTier = forcedPlayerTier !== undefined
-      ? forcedPlayerTier
-      : ((preservePlayerUpgrade && this.player) ? this.player.tier : 0);
+    const prevTier = (preservePlayerUpgrade && this.player) ? this.player.tier : 0;
     this.spawnPlayer(prevTier);
 
     this.spawnCooldown = 0.5;
     this.syncStats();
-  }
-
-  private populateFlankTactics(stageId: number) {
-    // Symmetrical flanking tactical cover:
-    // Columns 0 & 3, and 30 & 33 are clear high-speed transit highway corridors
-    // Columns 1 & 2, and 31 & 32 contain tactical cover:
-    for (let r = 4; r <= 7; r++) {
-      this.grid[r][1] = TileType.BRICK;
-      this.grid[r][32] = TileType.BRICK;
-    }
-
-    // Midfield bunker (Steel or Crate based on stage)
-    const bunkerTile = stageId >= 5 ? TileType.STEEL : TileType.BRICK;
-    this.grid[10][1] = bunkerTile;
-    this.grid[10][2] = bunkerTile;
-    this.grid[10][31] = bunkerTile;
-    this.grid[10][32] = bunkerTile;
-
-    // Southern defense crates
-    for (let r = 14; r <= 17; r++) {
-      this.grid[r][2] = TileType.BRICK;
-      this.grid[r][31] = TileType.BRICK;
-    }
   }
 
   public applyBaseTier(tier: number, isUpgrade: boolean = false) {
@@ -426,21 +235,21 @@ export class GameEngine {
     this.stats.baseUpgradeCost = cfg.upgradeCost;
     this.stats.canUpgradeBase = this.baseTier < 5 && this.stats.score >= cfg.upgradeCost;
 
-    // Apply hardened perimeter walls around base footprint (cols 15-18, rows 23-25)
-    for (let c = 15; c <= 18; c++) {
+    // Apply hardened perimeter walls around base footprint (cols 11-14, rows 23-25)
+    for (let c = 11; c <= 14; c++) {
       this.grid[23][c] = cfg.wallType;
     }
-    this.grid[24][15] = cfg.wallType;
-    this.grid[25][15] = cfg.wallType;
-    this.grid[24][18] = cfg.wallType;
-    this.grid[25][18] = cfg.wallType;
+    this.grid[24][11] = cfg.wallType;
+    this.grid[25][11] = cfg.wallType;
+    this.grid[24][14] = cfg.wallType;
+    this.grid[25][14] = cfg.wallType;
 
     // Ensure base tiles are intact
     if (!this.isBaseDestroyed) {
-      this.grid[24][16] = TileType.BASE;
-      this.grid[24][17] = TileType.BASE;
-      this.grid[25][16] = TileType.BASE;
-      this.grid[25][17] = TileType.BASE;
+      this.grid[24][12] = TileType.BASE;
+      this.grid[24][13] = TileType.BASE;
+      this.grid[25][12] = TileType.BASE;
+      this.grid[25][13] = TileType.BASE;
     }
 
     // Reset wall durability map
@@ -523,12 +332,6 @@ export class GameEngine {
       e.preventDefault();
       this.upgradeBase();
     }
-
-    // Toggle zoom ratio hotkey 'Z'
-    if (e.code === 'KeyZ') {
-      e.preventDefault();
-      this.cycleZoom();
-    }
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
@@ -542,13 +345,11 @@ export class GameEngine {
   private handleMouseMove = (e: MouseEvent) => {
     const rect = this.canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const clientX = e.clientX - rect.left;
-    const clientY = e.clientY - rect.top;
-    const mappedX = (clientX - this.originX) / Math.max(0.001, this.scale);
-    const mappedY = (clientY - this.originY) / Math.max(0.001, this.scale);
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
     this.mousePos = {
-      x: Math.max(0, Math.min(this.canvasWidth, mappedX)),
-      y: Math.max(0, Math.min(this.canvasHeight, mappedY)),
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
     };
     this.mouseAimActive = true;
   };
@@ -579,30 +380,11 @@ export class GameEngine {
     }
   }
 
-  public getBaseTier(): number {
-    return this.baseTier;
-  }
-
-  public getPlayerTier(): number {
-    return this.player ? this.player.tier : 0;
-  }
-
-  public getScore(): number {
-    return this.stats.score;
-  }
-
-  public getLives(): number {
-    return this.stats.lives;
-  }
-
   // --- Spawning ---
   private spawnPlayer(tier: number = 0) {
     const playerTierConfig = PLAYER_TIERS[Math.min(tier, PLAYER_TIERS.length - 1)];
-    const spawnX = 13 * TILE_SIZE;
+    const spawnX = 9 * TILE_SIZE;
     const spawnY = 24 * TILE_SIZE;
-
-    const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
-    const reloadSpeed = this.speedBoostTimer > 0 ? playerTierConfig.reloadMax * 0.8 : playerTierConfig.reloadMax;
 
     this.player = {
       id: 'player',
@@ -613,14 +395,14 @@ export class GameEngine {
       height: TANK_SIZE,
       dir: 'UP',
       turretAngle: -Math.PI / 2,
-      speed: playerTierConfig.speed + speedBoost,
+      speed: playerTierConfig.speed,
       maxHp: playerTierConfig.maxHp,
       hp: playerTierConfig.maxHp,
       tier,
       isPlayer: true,
       isFlashing: false,
       reloadTimer: 0,
-      reloadMax: reloadSpeed,
+      reloadMax: playerTierConfig.reloadMax,
       shieldTime: 3.5,
       frozenTime: 0,
       scoreValue: 0,
@@ -654,19 +436,6 @@ export class GameEngine {
     const isBoss = enemyType === 'BOSS';
     const size = isBoss ? TANK_SIZE * 1.4 : TANK_SIZE;
 
-    // Level-based difficulty scaling:
-    // Stage 1 starts at 68% speed (accessible, gentle learning curve)
-    // Progressively scales up +6% per stage, capped at 1.25x (Stage 8+)
-    const stage = Math.max(1, this.stats.stage);
-    const speedMultiplier = Math.min(1.25, 0.68 + (stage - 1) * 0.06);
-    const scaledSpeed = Math.round(cfg.speed * speedMultiplier);
-
-    // Enemy reload cooldown scaling:
-    // In Stage 1, enemies take 25% longer between shots so player isn't overwhelmed.
-    // Scales to faster firing in later stages (capped at 0.8x cooldown)
-    const reloadMultiplier = Math.max(0.80, 1.25 - (stage - 1) * 0.05);
-    const scaledReloadMax = Math.round(cfg.reloadMax * reloadMultiplier * 100) / 100;
-
     const enemy: Tank = {
       id: `enemy_${Date.now()}_${Math.random()}`,
       type: enemyType,
@@ -676,14 +445,14 @@ export class GameEngine {
       height: size,
       dir: 'DOWN',
       turretAngle: Math.PI / 2,
-      speed: scaledSpeed,
+      speed: cfg.speed,
       maxHp: cfg.hp,
       hp: cfg.hp,
       tier: isBoss ? 3 : 1,
       isPlayer: false,
       isFlashing,
-      reloadTimer: Math.random() * scaledReloadMax,
-      reloadMax: scaledReloadMax,
+      reloadTimer: Math.random() * 0.8,
+      reloadMax: cfg.reloadMax,
       shieldTime: 0,
       frozenTime: 0,
       scoreValue: cfg.scoreValue,
@@ -764,10 +533,6 @@ export class GameEngine {
 
     if (this.clockFreezeTimer > 0) {
       this.clockFreezeTimer -= dt;
-    }
-
-    if (this.speedBoostTimer > 0) {
-      this.speedBoostTimer = Math.max(0, this.speedBoostTimer - dt);
     }
 
     // Base Shield Hit Flash Timer
@@ -917,11 +682,6 @@ export class GameEngine {
       this.player.reloadTimer -= dt;
     }
 
-    const tierCfg = PLAYER_TIERS[Math.min(this.player.tier, PLAYER_TIERS.length - 1)];
-    const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
-    this.player.speed = tierCfg.speed + speedBoost;
-    this.player.reloadMax = this.speedBoostTimer > 0 ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax;
-
     let moveX = 0;
     let moveY = 0;
 
@@ -1008,8 +768,7 @@ export class GameEngine {
     if (!this.player || this.player.hp <= 0 || this.isPlayerDying || this.player.reloadTimer > 0) return;
 
     const tierCfg = PLAYER_TIERS[Math.min(this.player.tier, PLAYER_TIERS.length - 1)];
-    const reloadSpeed = this.speedBoostTimer > 0 ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax;
-    this.player.reloadTimer = reloadSpeed;
+    this.player.reloadTimer = tierCfg.reloadMax;
 
     const pCenterX = this.player.x + this.player.width / 2;
     const pCenterY = this.player.y + this.player.height / 2;
@@ -1018,7 +777,6 @@ export class GameEngine {
     const barrelLength = this.player.width * 0.58;
     const muzzleX = pCenterX + Math.cos(angle) * barrelLength;
     const muzzleY = pCenterY + Math.sin(angle) * barrelLength;
-    const effectiveBulletSpeed = Math.round(tierCfg.bulletSpeed * (this.speedBoostTimer > 0 ? 1.15 : 1.0));
 
     if (tierCfg.doubleShot) {
       const perpX = -Math.sin(angle) * 5;
@@ -1028,8 +786,8 @@ export class GameEngine {
         id: `pb_${Date.now()}_1`,
         x: muzzleX + perpX,
         y: muzzleY + perpY,
-        vx: Math.cos(angle) * effectiveBulletSpeed,
-        vy: Math.sin(angle) * effectiveBulletSpeed,
+        vx: Math.cos(angle) * tierCfg.bulletSpeed,
+        vy: Math.sin(angle) * tierCfg.bulletSpeed,
         radius: BULLET_RADIUS,
         damage: 1,
         ownerId: this.player.id,
@@ -1041,8 +799,8 @@ export class GameEngine {
         id: `pb_${Date.now()}_2`,
         x: muzzleX - perpX,
         y: muzzleY - perpY,
-        vx: Math.cos(angle) * effectiveBulletSpeed,
-        vy: Math.sin(angle) * effectiveBulletSpeed,
+        vx: Math.cos(angle) * tierCfg.bulletSpeed,
+        vy: Math.sin(angle) * tierCfg.bulletSpeed,
         radius: BULLET_RADIUS,
         damage: 1,
         ownerId: this.player.id,
@@ -1055,8 +813,8 @@ export class GameEngine {
         id: `pb_${Date.now()}`,
         x: muzzleX,
         y: muzzleY,
-        vx: Math.cos(angle) * effectiveBulletSpeed,
-        vy: Math.sin(angle) * effectiveBulletSpeed,
+        vx: Math.cos(angle) * tierCfg.bulletSpeed,
+        vy: Math.sin(angle) * tierCfg.bulletSpeed,
         radius: BULLET_RADIUS,
         damage: 1,
         ownerId: this.player.id,
@@ -1149,8 +907,8 @@ export class GameEngine {
 
   private decideEnemyDirection(enemy: Tank, forceTurn: boolean = false) {
     const directions: Direction[] = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-    const targetX = BASE_CENTER.x;
-    const targetY = BASE_CENTER.y;
+    const targetX = 12.5 * TILE_SIZE;
+    const targetY = 24.5 * TILE_SIZE;
 
     const dx = targetX - (enemy.x + enemy.width / 2);
     const dy = targetY - (enemy.y + enemy.height / 2);
@@ -1188,7 +946,7 @@ export class GameEngine {
     const eCenterY = enemy.y + enemy.height / 2;
     const dirVec = DIR_VECTORS[enemy.dir];
 
-    const baseCenterX = BASE_CENTER.x;
+    const baseCenterX = 13 * TILE_SIZE;
     if (enemy.dir === 'DOWN' && Math.abs(eCenterX - baseCenterX) < TANK_SIZE) {
       return true;
     }
@@ -1218,7 +976,7 @@ export class GameEngine {
 
   private fireEnemyBullet(enemy: Tank, isMissile: boolean = false) {
     const cfg = ENEMY_CONFIGS[enemy.type as EnemyType];
-    enemy.reloadTimer = enemy.reloadMax * (0.8 + Math.random() * 0.4);
+    enemy.reloadTimer = cfg.reloadMax * (0.8 + Math.random() * 0.4);
 
     const eCenterX = enemy.x + enemy.width / 2;
     const eCenterY = enemy.y + enemy.height / 2;
@@ -1228,17 +986,12 @@ export class GameEngine {
     const muzzleX = eCenterX + Math.cos(angle) * barrelLength;
     const muzzleY = eCenterY + Math.sin(angle) * barrelLength;
 
-    // Bullet speed slightly scaled with stage level:
-    const stage = Math.max(1, this.stats.stage);
-    const bulletSpeedMultiplier = Math.min(1.20, 0.85 + (stage - 1) * 0.04);
-    const scaledBulletSpeed = Math.round(cfg.bulletSpeed * bulletSpeedMultiplier);
-
     this.bullets.push({
       id: `eb_${Date.now()}_${Math.random()}`,
       x: muzzleX,
       y: muzzleY,
-      vx: Math.cos(angle) * scaledBulletSpeed,
-      vy: Math.sin(angle) * scaledBulletSpeed,
+      vx: Math.cos(angle) * cfg.bulletSpeed,
+      vy: Math.sin(angle) * cfg.bulletSpeed,
       radius: isMissile ? MISSILE_RADIUS : BULLET_RADIUS,
       damage: isMissile ? 2 : 1,
       ownerId: enemy.id,
@@ -1315,7 +1068,7 @@ export class GameEngine {
       }
 
       // Check boundary
-      if (b.x < 0 || b.x > this.canvasWidth || b.y < 0 || b.y > this.canvasHeight) {
+      if (b.x < 0 || b.x > CANVAS_SIZE || b.y < 0 || b.y > CANVAS_SIZE) {
         b.dead = true;
       }
     }
@@ -1391,9 +1144,9 @@ export class GameEngine {
         const tile = this.grid[row][col];
 
         // Base auto-turret friendly projectile exemption:
-        // Turret projectiles pass freely through base perimeter walls (rows 23-25, cols 15-18)
+        // Turret projectiles pass freely through base perimeter walls (rows 23-25, cols 11-14)
         if (b.ownerId === 'base_auto_turret') {
-          if (row >= 23 && row <= 25 && col >= 15 && col <= 18) {
+          if (row >= 23 && row <= 25 && col >= 11 && col <= 14) {
             continue;
           }
         }
@@ -1640,12 +1393,12 @@ export class GameEngine {
     this.baseHp = 0;
     this.stats.baseHp = 0;
 
-    this.grid[24][16] = TileType.BASE_DESTROYED;
-    this.grid[24][17] = TileType.BASE_DESTROYED;
-    this.grid[25][16] = TileType.BASE_DESTROYED;
-    this.grid[25][17] = TileType.BASE_DESTROYED;
+    this.grid[24][12] = TileType.BASE_DESTROYED;
+    this.grid[24][13] = TileType.BASE_DESTROYED;
+    this.grid[25][12] = TileType.BASE_DESTROYED;
+    this.grid[25][13] = TileType.BASE_DESTROYED;
 
-    const baseX = BASE_CENTER.x;
+    const baseX = 13 * TILE_SIZE;
     const baseY = 25 * TILE_SIZE;
 
     // Base Destruction multi-stage detonation
@@ -1666,8 +1419,8 @@ export class GameEngine {
     const types: PowerUpType[] = ['STAR', 'SHIELD', 'BOMB', 'CLOCK', 'SHOVEL', 'HEART', 'SPEED', 'FORTRESS'];
     const type = types[Math.floor(Math.random() * types.length)];
 
-    const clampedX = Math.max(30, Math.min(this.canvasWidth - 30, x));
-    const clampedY = Math.max(30, Math.min(this.canvasHeight - 30, y));
+    const clampedX = Math.max(30, Math.min(CANVAS_SIZE - 30, x));
+    const clampedY = Math.max(30, Math.min(CANVAS_SIZE - 30, y));
 
     this.powerUps.push({
       id: `pw_${Date.now()}_${Math.random()}`,
@@ -1683,30 +1436,27 @@ export class GameEngine {
     this.stats.powerUpsCollected++;
     soundEngine.playPowerUp();
 
-    const pX = this.player ? this.player.x + this.player.width / 2 : this.canvasWidth / 2;
-    const pY = this.player ? this.player.y : this.canvasHeight / 2;
+    const pX = this.player ? this.player.x + this.player.width / 2 : CANVAS_SIZE / 2;
+    const pY = this.player ? this.player.y : CANVAS_SIZE / 2;
 
     switch (type) {
       case 'STAR':
         if (this.player) {
           this.player.tier = Math.min(3, this.player.tier + 1);
           const cfg = PLAYER_TIERS[this.player.tier];
-          const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
-          this.player.speed = cfg.speed + speedBoost;
-          this.player.reloadMax = this.speedBoostTimer > 0 ? cfg.reloadMax * 0.8 : cfg.reloadMax;
+          this.player.speed = cfg.speed;
+          this.player.reloadMax = cfg.reloadMax;
           this.player.maxHp = cfg.maxHp;
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + 1);
           this.player.name = cfg.name;
-          particleSystem.emitBaseUpgradeBurst(pX, pY, '#38bdf8');
-          const fireRate = (Math.round((1 / this.player.reloadMax) * 10) / 10).toFixed(1);
-          this.addFloatText(pX, pY, `⭐ C${this.player.tier + 1} ${cfg.name}: CHẠY ${this.player.speed} · BẮN ${fireRate}/S`, '#38bdf8');
+          this.addFloatText(pX, pY, `NÂNG CẤP: ${cfg.name}!`, '#38bdf8');
         }
         break;
 
       case 'SHIELD':
         if (this.player) {
           this.player.shieldTime = 10;
-          this.addFloatText(pX, pY, '🛡️ KHIÊN BẤT TỬ 10S!', '#38bdf8');
+          this.addFloatText(pX, pY, 'KHIÊN BẤT TỬ 10S!', '#38bdf8');
         }
         break;
 
@@ -1716,12 +1466,12 @@ export class GameEngine {
           this.handleEnemyDestroyed(e);
         }
         this.enemies = [];
-        this.addFloatText(pX, pY, '💣 BOM NGUYÊN TỬ!', '#f97316');
+        this.addFloatText(pX, pY, 'BOM NGUYÊN TỬ!', '#f97316');
         break;
 
       case 'CLOCK':
         this.clockFreezeTimer = 7.0;
-        this.addFloatText(pX, pY, '⏰ ĐÓNG BĂNG KẺ ĐỊCH 7S!', '#67e8f9');
+        this.addFloatText(pX, pY, 'ĐÓNG BĂNG KẺ ĐỊCH 7S!', '#67e8f9');
         break;
 
       case 'SHOVEL':
@@ -1731,7 +1481,7 @@ export class GameEngine {
         if (this.baseShieldMaxHp > 0) {
           this.baseShieldHp = Math.min(this.baseShieldMaxHp, this.baseShieldHp + 60);
         }
-        this.addFloatText(pX, pY, '⛏️ CÔNG SỰ THÉP & HỒI KHIÊN 16S!', '#94a3b8');
+        this.addFloatText(pX, pY, 'CÔNG SỰ THÉP & HỒI KHIÊN 16S!', '#94a3b8');
         break;
 
       case 'FORTRESS':
@@ -1747,49 +1497,50 @@ export class GameEngine {
           particleSystem.emitBaseUpgradeBurst(BASE_CENTER.x, BASE_CENTER.y, '#06b6d4');
           this.addFloatText(pX, pY, 'PHÁO ĐÀI LƯỢNG TỬ SIÊU CƯỜNG!', '#06b6d4');
         }
-        this.addFloatText(pX, pY, '🏰 NÂNG CẤP CĂN CỨ & PHỤC HỒI KHIÊN!', '#facc15');
+        this.addFloatText(pX, pY, 'NÂNG CẤP CĂN CỨ & PHỤC HỒI KHIÊN!', '#facc15');
         break;
 
       case 'HEART':
         this.stats.lives++;
         if (this.player) this.player.hp = this.player.maxHp;
-        this.addFloatText(pX, pY, '❤️ +1 MẠNG & HỒI ĐẦY MÁU!', '#ec4899');
+        this.addFloatText(pX, pY, '+1 MẠNG & HỒI ĐẦY MÁU!', '#ec4899');
         break;
 
       case 'SPEED':
-        this.speedBoostTimer = 8.0;
         if (this.player) {
-          const cfg = PLAYER_TIERS[this.player.tier];
-          this.player.speed = cfg.speed + 35;
-          this.player.reloadMax = cfg.reloadMax * 0.8;
-          particleSystem.emitSpawnBurst(pX, pY, '#facc15');
-          const fireRate = (Math.round((1 / this.player.reloadMax) * 10) / 10).toFixed(1);
-          this.addFloatText(pX, pY, `⚡ TĂNG TỐC 8S: CHẠY ${this.player.speed} px/s · BẮN ${fireRate}/S!`, '#facc15');
+          this.player.speed += 30;
+          setTimeout(() => {
+            if (this.player) {
+              const baseSpeed = PLAYER_TIERS[this.player.tier].speed;
+              this.player.speed = baseSpeed;
+            }
+          }, 8000);
+          this.addFloatText(pX, pY, 'TĂNG TỐC ĐỘ 8S!', '#facc15');
         }
         break;
     }
   }
 
   private reinforceBaseFortressWithSteel() {
-    for (let c = 15; c <= 18; c++) {
+    for (let c = 11; c <= 14; c++) {
       this.grid[23][c] = TileType.STEEL;
     }
-    this.grid[24][15] = TileType.STEEL;
-    this.grid[25][15] = TileType.STEEL;
-    this.grid[24][18] = TileType.STEEL;
-    this.grid[25][18] = TileType.STEEL;
+    this.grid[24][11] = TileType.STEEL;
+    this.grid[25][11] = TileType.STEEL;
+    this.grid[24][14] = TileType.STEEL;
+    this.grid[25][14] = TileType.STEEL;
     this.ejectTanksFromBasePerimeter();
   }
 
   private restoreBaseFortressToTierWalls() {
     const currentWallType = BASE_TIERS[this.baseTier - 1].wallType;
-    for (let c = 15; c <= 18; c++) {
+    for (let c = 11; c <= 14; c++) {
       if (this.grid[23][c] === TileType.STEEL) this.grid[23][c] = currentWallType;
     }
-    if (this.grid[24][15] === TileType.STEEL) this.grid[24][15] = currentWallType;
-    if (this.grid[25][15] === TileType.STEEL) this.grid[25][15] = currentWallType;
-    if (this.grid[24][18] === TileType.STEEL) this.grid[24][18] = currentWallType;
-    if (this.grid[25][18] === TileType.STEEL) this.grid[25][18] = currentWallType;
+    if (this.grid[24][11] === TileType.STEEL) this.grid[24][11] = currentWallType;
+    if (this.grid[25][11] === TileType.STEEL) this.grid[25][11] = currentWallType;
+    if (this.grid[24][14] === TileType.STEEL) this.grid[24][14] = currentWallType;
+    if (this.grid[25][14] === TileType.STEEL) this.grid[25][14] = currentWallType;
     this.ejectTanksFromBasePerimeter();
   }
 
@@ -1813,7 +1564,7 @@ export class GameEngine {
 
   // --- Collisions & Geometry ---
   private checkTankCollision(x: number, y: number, w: number, h: number, ignoreId: string): boolean {
-    if (x < 0 || x + w > this.canvasWidth || y < 0 || y + h > this.canvasHeight) {
+    if (x < 0 || x + w > CANVAS_SIZE || y < 0 || y + h > CANVAS_SIZE) {
       return true;
     }
 
@@ -1868,8 +1619,8 @@ export class GameEngine {
     const angles = [-Math.PI / 2, Math.PI, 0, -Math.PI * 0.75, -Math.PI * 0.25];
     for (let radius = 2; radius <= 48; radius += 3) {
       for (const ang of angles) {
-        const cx = Math.max(0, Math.min(this.canvasWidth - tank.width, startX + Math.cos(ang) * radius));
-        const cy = Math.max(0, Math.min(this.canvasHeight - tank.height, startY + Math.sin(ang) * radius));
+        const cx = Math.max(0, Math.min(CANVAS_SIZE - tank.width, startX + Math.cos(ang) * radius));
+        const cy = Math.max(0, Math.min(CANVAS_SIZE - tank.height, startY + Math.sin(ang) * radius));
         if (!this.checkTankCollision(cx, cy, tank.width, tank.height, tank.id)) {
           return { x: cx, y: cy };
         }
@@ -1879,13 +1630,13 @@ export class GameEngine {
     // Fallback safe positions around base perimeter
     const fallbackCandidates = [
       { x: tank.x, y: 22 * TILE_SIZE - (tank.height - TILE_SIZE) }, // North of row 23 wall
-      { x: 14 * TILE_SIZE - (tank.width - TILE_SIZE), y: tank.y },  // West of col 15
-      { x: 19 * TILE_SIZE, y: tank.y },                             // East of col 18
+      { x: 10 * TILE_SIZE - (tank.width - TILE_SIZE), y: tank.y },  // West of col 11
+      { x: 15 * TILE_SIZE, y: tank.y },                             // East of col 14
     ];
 
     for (const cand of fallbackCandidates) {
-      const cx = Math.max(0, Math.min(this.canvasWidth - tank.width, cand.x));
-      const cy = Math.max(0, Math.min(this.canvasHeight - tank.height, cand.y));
+      const cx = Math.max(0, Math.min(CANVAS_SIZE - tank.width, cand.x));
+      const cy = Math.max(0, Math.min(CANVAS_SIZE - tank.height, cand.y));
       if (!this.checkTankCollision(cx, cy, tank.width, tank.height, tank.id)) {
         return { x: cx, y: cy };
       }
@@ -1905,9 +1656,9 @@ export class GameEngine {
       }
     }
 
-    // Base fortress area bounds: columns 14 to 19, rows 22 to 26
-    const minX = 14 * TILE_SIZE;
-    const maxX = 19 * TILE_SIZE;
+    // Base fortress area bounds: columns 10 to 15, rows 22 to 26
+    const minX = 10 * TILE_SIZE;
+    const maxX = 15 * TILE_SIZE;
     const minY = 22 * TILE_SIZE;
     const maxY = 26 * TILE_SIZE;
 
@@ -1978,17 +1729,17 @@ export class GameEngine {
   // --- Beautiful Tactical Ground Terrain Generation ---
   private generateTerrainCanvas(): HTMLCanvasElement {
     const tCanvas = document.createElement('canvas');
-    tCanvas.width = this.canvasWidth;
-    tCanvas.height = this.canvasHeight;
+    tCanvas.width = CANVAS_SIZE;
+    tCanvas.height = CANVAS_SIZE;
     const tCtx = tCanvas.getContext('2d')!;
 
     // 1. Rich dark military asphalt & tactical soil base tone with subtle warm undertone
-    const baseGrad = tCtx.createLinearGradient(0, 0, this.canvasWidth, this.canvasHeight);
+    const baseGrad = tCtx.createLinearGradient(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     baseGrad.addColorStop(0, '#191c24');
     baseGrad.addColorStop(0.5, '#161920');
     baseGrad.addColorStop(1, '#13151b');
     tCtx.fillStyle = baseGrad;
-    tCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+    tCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     // 2. Deterministic pseudo-random generator for pristine repeatable terrain
     let seed = 42891;
@@ -1999,9 +1750,9 @@ export class GameEngine {
 
     // 3. Multi-layer organic soil, clay, dust & weathered terrain patches
     // A. Warm earth/clay patches (gives organic ground depth)
-    for (let i = 0; i < 48; i++) {
-      const px = rnd() * this.canvasWidth;
-      const py = rnd() * this.canvasHeight;
+    for (let i = 0; i < 42; i++) {
+      const px = rnd() * CANVAS_SIZE;
+      const py = rnd() * CANVAS_SIZE;
       const pr = 30 + rnd() * 65;
       const grad = tCtx.createRadialGradient(px, py, 4, px, py, pr);
       grad.addColorStop(0, 'rgba(42, 33, 24, 0.40)');
@@ -2014,9 +1765,9 @@ export class GameEngine {
     }
 
     // B. Damp charcoal soil / dark loam patches
-    for (let i = 0; i < 40; i++) {
-      const px = rnd() * this.canvasWidth;
-      const py = rnd() * this.canvasHeight;
+    for (let i = 0; i < 35; i++) {
+      const px = rnd() * CANVAS_SIZE;
+      const py = rnd() * CANVAS_SIZE;
       const pr = 20 + rnd() * 50;
       const grad = tCtx.createRadialGradient(px, py, 2, px, py, pr);
       grad.addColorStop(0, 'rgba(10, 14, 20, 0.65)');
@@ -2029,9 +1780,9 @@ export class GameEngine {
     }
 
     // C. Historic battle blast craters / scorched earth
-    for (let i = 0; i < 15; i++) {
-      const cx = 50 + rnd() * (this.canvasWidth - 100);
-      const cy = 60 + rnd() * (this.canvasHeight - 180);
+    for (let i = 0; i < 12; i++) {
+      const cx = 50 + rnd() * (CANVAS_SIZE - 100);
+      const cy = 60 + rnd() * (CANVAS_SIZE - 180);
       const cr = 14 + rnd() * 22;
       const craterGrad = tCtx.createRadialGradient(cx, cy, 2, cx, cy, cr);
       craterGrad.addColorStop(0, 'rgba(5, 6, 8, 0.55)');
@@ -2044,15 +1795,15 @@ export class GameEngine {
     }
 
     // 4. Weathered historic tank tread tracks (pressed into the soil along side avenues)
-    const trackCols = [6.5 * TILE_SIZE, 27.5 * TILE_SIZE];
+    const trackCols = [7.5 * TILE_SIZE, 18.5 * TILE_SIZE];
     for (const trackX of trackCols) {
       tCtx.fillStyle = 'rgba(0, 0, 0, 0.16)';
-      for (let y = 10; y < this.canvasHeight - 20; y += 7) {
+      for (let y = 10; y < CANVAS_SIZE - 20; y += 7) {
         tCtx.fillRect(trackX - 9, y, 7, 2.5);
         tCtx.fillRect(trackX + 2, y, 7, 2.5);
       }
       tCtx.fillStyle = 'rgba(255, 255, 255, 0.016)';
-      for (let y = 10; y < this.canvasHeight - 20; y += 7) {
+      for (let y = 10; y < CANVAS_SIZE - 20; y += 7) {
         tCtx.fillRect(trackX - 9, y + 2.5, 7, 1);
         tCtx.fillRect(trackX + 2, y + 2.5, 7, 1);
       }
@@ -2082,14 +1833,14 @@ export class GameEngine {
       tCtx.lineWidth = 1;
       tCtx.beginPath();
       tCtx.moveTo(0, y);
-      tCtx.lineTo(this.canvasWidth, y);
+      tCtx.lineTo(CANVAS_SIZE, y);
       tCtx.stroke();
 
       // Top light reflection bevel
       tCtx.strokeStyle = 'rgba(255, 255, 255, 0.032)';
       tCtx.beginPath();
       tCtx.moveTo(0, y + 1);
-      tCtx.lineTo(this.canvasWidth, y + 1);
+      tCtx.lineTo(CANVAS_SIZE, y + 1);
       tCtx.stroke();
     }
 
@@ -2099,18 +1850,18 @@ export class GameEngine {
       tCtx.lineWidth = 1;
       tCtx.beginPath();
       tCtx.moveTo(x, 0);
-      tCtx.lineTo(x, this.canvasHeight);
+      tCtx.lineTo(x, CANVAS_SIZE);
       tCtx.stroke();
 
       tCtx.strokeStyle = 'rgba(255, 255, 255, 0.032)';
       tCtx.beginPath();
       tCtx.moveTo(x + 1, 0);
-      tCtx.lineTo(x + 1, this.canvasHeight);
+      tCtx.lineTo(x + 1, CANVAS_SIZE);
       tCtx.stroke();
     }
 
-    // 7. Base HQ Security Apron Markings (Caution diagonal hazard stripes around base area at cols 16-17)
-    const baseApronX = 14 * TILE_SIZE;
+    // 7. Base HQ Security Apron Markings (Caution diagonal hazard stripes around base area)
+    const baseApronX = 10 * TILE_SIZE;
     const baseApronY = 22 * TILE_SIZE;
     const baseApronW = 6 * TILE_SIZE;
     const baseApronH = 4 * TILE_SIZE;
@@ -2121,7 +1872,7 @@ export class GameEngine {
 
     tCtx.strokeStyle = 'rgba(234, 179, 8, 0.06)';
     tCtx.lineWidth = 4;
-    for (let d = -this.canvasWidth; d < this.canvasWidth * 2; d += 16) {
+    for (let d = -CANVAS_SIZE; d < CANVAS_SIZE * 2; d += 16) {
       tCtx.beginPath();
       tCtx.moveTo(d, baseApronY);
       tCtx.lineTo(d + baseApronH, baseApronY + baseApronH);
@@ -2134,10 +1885,10 @@ export class GameEngine {
     tCtx.strokeRect(baseApronX + 0.5, baseApronY + 0.5, baseApronW - 1, baseApronH - 1);
     tCtx.restore();
 
-    // 8. Fine Organic Soil Grit, Pebbles & Sand Grains (1,300 specks)
-    for (let i = 0; i < 1300; i++) {
-      const gx = rnd() * this.canvasWidth;
-      const gy = rnd() * this.canvasHeight;
+    // 8. Fine Organic Soil Grit, Pebbles & Sand Grains (1,100 specks)
+    for (let i = 0; i < 1100; i++) {
+      const gx = rnd() * CANVAS_SIZE;
+      const gy = rnd() * CANVAS_SIZE;
       const isWarmLight = rnd() > 0.65;
       tCtx.fillStyle = isWarmLight ? 'rgba(240, 215, 175, 0.05)' : 'rgba(0, 0, 0, 0.32)';
       const s = 1 + rnd() * 1.5;
@@ -2162,50 +1913,36 @@ export class GameEngine {
 
     // 10. Atmospheric Depth Vignette (Soft spotlight focus in center, deep tactical borders)
     const vig = tCtx.createRadialGradient(
-      this.canvasWidth / 2,
-      this.canvasHeight / 2,
-      this.canvasHeight * 0.32,
-      this.canvasWidth / 2,
-      this.canvasHeight / 2,
-      this.canvasWidth * 0.65
+      CANVAS_SIZE / 2,
+      CANVAS_SIZE / 2,
+      CANVAS_SIZE * 0.32,
+      CANVAS_SIZE / 2,
+      CANVAS_SIZE / 2,
+      CANVAS_SIZE * 0.74
     );
     vig.addColorStop(0, 'rgba(255, 255, 255, 0.015)');
     vig.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
     vig.addColorStop(1, 'rgba(5, 7, 12, 0.46)');
     tCtx.fillStyle = vig;
-    tCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+    tCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     return tCanvas;
   }
 
   // --- Rendering Pipeline ---
   public render() {
-    this.updateViewportSize();
     const ctx = this.ctx;
-    const vW = this.viewportWidth;
-    const vH = this.viewportHeight;
-
-    // 1. Draw continuous tactical military warzone terrain across 100% of screen (NO black gaps!)
-    this.renderExtendedBackground(ctx, vW, vH);
-
-    // 2. Render 26x26 arena inside perfectly scaled 1:1 square viewport
     ctx.save();
-    ctx.translate(this.originX, this.originY);
-    ctx.scale(this.scale, this.scale);
-    ctx.translate(this.shakeOffsetX, this.shakeOffsetY);
 
-    // Clip rendering to arena boundaries to ensure absolute crisp edges
-    ctx.beginPath();
-    ctx.rect(0, 0, this.canvasWidth, this.canvasHeight);
-    ctx.clip();
-
-    // Render arena ground
+    // Render beautiful pre-baked tactical ground terrain
     if (this.terrainCanvas) {
-      ctx.drawImage(this.terrainCanvas, 0, 0, this.canvasWidth, this.canvasHeight);
+      ctx.drawImage(this.terrainCanvas, 0, 0);
     } else {
       ctx.fillStyle = '#111722';
-      ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     }
+
+    ctx.translate(this.shakeOffsetX, this.shakeOffsetY);
 
     // 1. Tracks
     this.renderTrackMarks(ctx);
@@ -2242,124 +1979,14 @@ export class GameEngine {
     // 8. Base Forcefield Shield Matrix
     this.renderBaseShield(ctx);
 
-    // 9. Tactical Arena Perimeter Framing & Corner Hazard Markers
-    this.renderArenaBoundary(ctx);
+    // 9. Weather Atmosphere (Rain drops, snow flakes, water ripples)
+    weatherSystem.render(ctx);
 
-    // 10. Particles inside arena space
+    // 10. Enhanced Particle System (Renders all flashes, shockwaves, fire, sparks, debris, dust)
     particleSystem.render(ctx);
 
     // 11. Floating texts
     this.renderFloatTexts(ctx);
-
-    ctx.restore();
-
-    // 3. Render weather atmosphere across 100% of screen from edge to edge
-    weatherSystem.render(ctx);
-  }
-
-  private renderExtendedBackground(ctx: CanvasRenderingContext2D, vW: number, vH: number) {
-    // Rich military dark asphalt/soil gradient filling 100% of the canvas
-    const bgGrad = ctx.createLinearGradient(0, 0, vW, vH);
-    bgGrad.addColorStop(0, '#151821');
-    bgGrad.addColorStop(0.5, '#11141b');
-    bgGrad.addColorStop(1, '#0e1016');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, vW, vH);
-
-    // Extended paver tile seams aligned seamlessly with arena grid
-    const effectiveTile = TILE_SIZE * this.scale;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.022)';
-    ctx.lineWidth = 1;
-
-    // Vertical seam lines extending left and right
-    for (let x = this.originX % effectiveTile; x < vW; x += effectiveTile) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, vH);
-      ctx.stroke();
-    }
-
-    // Horizontal seam lines extending top and bottom
-    for (let y = this.originY % effectiveTile; y < vH; y += effectiveTile) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(vW, y);
-      ctx.stroke();
-    }
-
-    // Tactical Wing Demarcations on widescreen displays (left and right flanks)
-    if (this.originX > 25) {
-      ctx.save();
-      const leftMidX = this.originX / 2;
-      const rightStartX = this.originX + this.canvasWidth * this.scale;
-      const rightMidX = rightStartX + (vW - rightStartX) / 2;
-
-      // Subtle tactical radar arc sweep on West flank
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 6]);
-      ctx.beginPath();
-      ctx.arc(this.originX, vH / 2, Math.min(vH * 0.45, this.originX * 0.9), Math.PI * 0.5, Math.PI * 1.5);
-      ctx.stroke();
-
-      // Subtle tactical radar arc sweep on East flank
-      ctx.beginPath();
-      ctx.arc(rightStartX, vH / 2, Math.min(vH * 0.45, (vW - rightStartX) * 0.9), -Math.PI * 0.5, Math.PI * 0.5);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Subtle tactical sector text markings
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.28)';
-      ctx.font = 'bold 10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('◄ VÀNH ĐAI TÂY', leftMidX, 32);
-      ctx.fillText('RADAR QUÂN SỰ', leftMidX, vH - 28);
-
-      ctx.fillText('VÀNH ĐAI ĐÔNG ►', rightMidX, 32);
-      ctx.fillText('TRINH SÁT TÁC CHIẾN', rightMidX, vH - 28);
-      ctx.restore();
-    }
-  }
-
-  private renderArenaBoundary(ctx: CanvasRenderingContext2D) {
-    ctx.save();
-    // Glowing perimeter line around combat zone
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(0.5, 0.5, this.canvasWidth - 1, this.canvasHeight - 1);
-
-    // High-tech Corner reinforced brackets
-    const bLen = 16;
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-
-    // Top-Left
-    ctx.beginPath();
-    ctx.moveTo(0, bLen);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(bLen, 0);
-    ctx.stroke();
-
-    // Top-Right
-    ctx.beginPath();
-    ctx.moveTo(this.canvasWidth - bLen, 0);
-    ctx.lineTo(this.canvasWidth, 0);
-    ctx.lineTo(this.canvasWidth, bLen);
-    ctx.stroke();
-
-    // Bottom-Left
-    ctx.beginPath();
-    ctx.moveTo(0, this.canvasHeight - bLen);
-    ctx.lineTo(0, this.canvasHeight);
-    ctx.lineTo(bLen, this.canvasHeight);
-    ctx.stroke();
-
-    // Bottom-Right
-    ctx.beginPath();
-    ctx.moveTo(this.canvasWidth - bLen, this.canvasHeight);
-    ctx.lineTo(this.canvasWidth, this.canvasHeight);
-    ctx.lineTo(this.canvasWidth - bLen, this.canvasHeight);
-    ctx.stroke();
 
     ctx.restore();
   }
@@ -2753,7 +2380,7 @@ export class GameEngine {
   private drawBaseHQ(ctx: CanvasRenderingContext2D, x: number, y: number, isDestroyed: boolean) {
     const col = Math.floor(x / TILE_SIZE);
     const row = Math.floor(y / TILE_SIZE);
-    if (col !== BASE_COORD.col || row !== BASE_COORD.row) return;
+    if (col !== 12 || row !== 24) return;
 
     const baseW = TILE_SIZE * 2;
     const baseH = TILE_SIZE * 2;
@@ -2932,75 +2559,14 @@ export class GameEngine {
     ctx.textBaseline = 'middle';
     ctx.fillText(cfg.badge, cx, y + baseH - 5.5);
 
-    // 9. Prominent High-Contrast Base HP Armored Gauge & Overhead Status
+    // 9. Base HP Gauge Segments at top
     const maxHp = cfg.maxHp;
-    const isCritical = this.baseHp === 1 && maxHp > 1;
-
-    // --- A. Floating Overhead Tactical Base Health Telemetry (y - 10) ---
-    ctx.save();
-    const baseBarW = 54;
-    const baseBarH = 7;
-    const baseBarX = cx - baseBarW / 2;
-    const baseBarY = y - 11;
-
-    // Tactical Label above overhead bar
-    ctx.font = '900 8px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    const hpRatio = this.baseHp / maxHp;
-    const labelText = isCritical
-      ? '⚠️ CĂN CỨ: 1 HP!'
-      : `🏰 CĂN CỨ: ${this.baseHp}/${maxHp}`;
-
-    // Deep black outline stroke for 100% legibility on any background
-    ctx.strokeStyle = '#020617';
-    ctx.lineWidth = 3;
-    ctx.strokeText(labelText, cx, baseBarY - 1.5);
-    ctx.fillStyle = isCritical
-      ? (Math.floor(time * 1000 / 200) % 2 === 0 ? '#ef4444' : '#fca5a5')
-      : (hpRatio > 0.5 ? '#facc15' : '#f97316');
-    ctx.fillText(labelText, cx, baseBarY - 1.5);
-
-    // Deep Drop Shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-    ctx.fillRect(baseBarX - 1.5, baseBarY - 1.5, baseBarW + 3, baseBarH + 3);
-
-    // Dark Plate
-    ctx.fillStyle = '#020617';
-    ctx.fillRect(baseBarX, baseBarY, baseBarW, baseBarH);
-
-    // Tier/Warning Border
-    ctx.strokeStyle = isCritical
-      ? (Math.floor(time * 1000 / 200) % 2 === 0 ? '#ef4444' : '#f59e0b')
-      : cfg.color;
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(baseBarX - 0.5, baseBarY - 0.5, baseBarW + 1, baseBarH + 1);
-
-    // Segmented Base HP blocks
-    const baseSegGap = 1.5;
-    const baseSegW = (baseBarW - 3 - (maxHp - 1) * baseSegGap) / maxHp;
+    const pipW = Math.min(6, (baseW - 16) / maxHp - 1.5);
+    const startX = cx - (maxHp * (pipW + 1.5)) / 2;
     for (let i = 0; i < maxHp; i++) {
-      const sx = baseBarX + 1.5 + i * (baseSegW + baseSegGap);
-      if (i < this.baseHp) {
-        if (isCritical) {
-          ctx.fillStyle = Math.floor(time * 1000 / 200) % 2 === 0 ? '#ef4444' : '#f87171';
-        } else if (hpRatio > 0.5) {
-          ctx.fillStyle = '#10b981'; // Emerald healthy
-        } else {
-          ctx.fillStyle = '#f59e0b'; // Amber damaged
-        }
-        ctx.fillRect(sx, baseBarY + 1.2, baseSegW, baseBarH - 2.4);
-
-        // Top specular highlight rim
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.fillRect(sx, baseBarY + 1.2, baseSegW, 1);
-      } else {
-        // Depleted health segment
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(sx, baseBarY + 1.2, baseSegW, baseBarH - 2.4);
-      }
+      ctx.fillStyle = i < this.baseHp ? (this.baseHp === 1 ? '#ef4444' : '#22c55e') : '#334155';
+      ctx.fillRect(startX + i * (pipW + 1.5), y + 3.5, pipW, 2.5);
     }
-    ctx.restore();
 
     // 10. Heavy Base Auto-Turret (if Tier >= 3)
     if (cfg.hasAutoTurret) {
@@ -3508,95 +3074,37 @@ export class GameEngine {
       ctx.restore();
     }
 
-    // 5. High-Visibility Segmented Overhead HP Bar (Visible & Crisp on ALL tanks)
-    const isPlayer = tank.isPlayer;
-    const barW = isPlayer ? 32 : (isBoss ? 42 : (tank.type === 'HEAVY' ? 30 : (tank.maxHp > 1 ? 26 : 22)));
-    const barH = isPlayer ? 5 : (isBoss ? 5.5 : 4.5);
-    const barX = cx - barW / 2;
-    const barY = cy - halfH - (isPlayer ? 11 : (isBoss ? 12 : 9));
+    // 5. Military Segmented HP Bar (for multi-HP units: Player, Boss, Heavy, Assault)
+    if (tank.maxHp > 1 && (tank.hp < tank.maxHp || isBoss || tank.type === 'HEAVY')) {
+      const barW = Math.max(26, tank.width);
+      const barH = 4;
+      const barX = cx - barW / 2;
+      const barY = cy - halfH - 9;
 
-    ctx.save();
+      ctx.save();
+      // Drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
 
-    // Player Extra Lives Indicator (Mạng sống dự phòng - Hình Trái Tim) rendered directly beside player's HP bar
-    if (isPlayer && this.stats.lives !== undefined) {
-      ctx.font = '900 8.5px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const livesText = `♥${this.stats.lives}`;
-      ctx.strokeStyle = '#020617';
-      ctx.lineWidth = 2.5;
-      ctx.strokeText(livesText, barX - 10, barY + barH / 2);
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillText(livesText, barX - 10, barY + barH / 2);
-    }
+      // Bar container
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(barX, barY, barW, barH);
 
-    // Heavy Drop Shadow for guaranteed legibility across any ground texture
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-
-    // Deep Dark Background Plate
-    ctx.fillStyle = '#020617';
-    ctx.fillRect(barX, barY, barW, barH);
-
-    // Dynamic Outline (Shield aura for player, golden for boss, crisp black for standard)
-    if (isPlayer && tank.shieldTime > 0) {
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
-    } else if (isBoss) {
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
-    } else {
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 0.8;
-      ctx.strokeRect(barX, barY, barW, barH);
-    }
-
-    // Health Segments
-    const segGap = tank.maxHp > 1 ? 1 : 0;
-    const segW = (barW - 2 - (tank.maxHp - 1) * segGap) / tank.maxHp;
-    for (let i = 0; i < tank.maxHp; i++) {
-      const sx = barX + 1 + i * (segW + segGap);
-      if (i < tank.hp) {
-        if (isPlayer) {
+      // Health Segments
+      const segGap = 1;
+      const segW = (barW - (tank.maxHp - 1) * segGap) / tank.maxHp;
+      for (let i = 0; i < tank.maxHp; i++) {
+        const sx = barX + i * (segW + segGap);
+        if (i < tank.hp) {
           const hpRatio = tank.hp / tank.maxHp;
-          if (tank.hp === 1 && tank.maxHp > 1) {
-            // Urgent flashing crimson when down to last 1 HP
-            ctx.fillStyle = Math.floor(time / 160) % 2 === 0 ? '#ef4444' : '#fca5a5';
-          } else if (hpRatio > 0.5) {
-            ctx.fillStyle = '#10b981'; // Emerald Green
-          } else if (hpRatio > 0.25) {
-            ctx.fillStyle = '#f59e0b'; // Amber
-          } else {
-            ctx.fillStyle = '#ef4444'; // Red
-          }
+          ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#eab308' : '#ef4444');
         } else {
-          // Enemies
-          if (isFrozen) {
-            ctx.fillStyle = '#38bdf8'; // Frozen Ice Blue
-          } else if (isBoss) {
-            const bossRatio = tank.hp / tank.maxHp;
-            ctx.fillStyle = bossRatio > 0.5 ? '#f97316' : (bossRatio > 0.25 ? '#ef4444' : '#b91c1c');
-          } else if (tank.maxHp > 1) {
-            const enemyRatio = tank.hp / tank.maxHp;
-            ctx.fillStyle = enemyRatio > 0.5 ? '#f97316' : '#ef4444';
-          } else {
-            ctx.fillStyle = '#ef4444'; // Basic & Scout 1-HP tanks
-          }
+          ctx.fillStyle = '#334155';
         }
-        ctx.fillRect(sx, barY + 1, segW, barH - 2);
-
-        // Specular 3D highlight gloss on top edge of active segment
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillRect(sx, barY + 1, segW, 0.8);
-      } else {
-        // Depleted health slot
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(sx, barY + 1, segW, barH - 2);
+        ctx.fillRect(sx, barY, segW, barH);
       }
+      ctx.restore();
     }
-    ctx.restore();
 
     ctx.restore();
   }
@@ -3613,7 +3121,7 @@ export class GameEngine {
 
     ctx.beginPath();
     ctx.moveTo(eCenterX, eCenterY);
-    ctx.lineTo(eCenterX + vec.x * this.canvasWidth, eCenterY + vec.y * this.canvasHeight);
+    ctx.lineTo(eCenterX + vec.x * CANVAS_SIZE, eCenterY + vec.y * CANVAS_SIZE);
     ctx.stroke();
 
     // Red warning reticle dot at end
@@ -4032,79 +3540,6 @@ export class GameEngine {
     this.stats.canUpgradeBase = this.baseTier < 5 && this.stats.score >= cfg.upgradeCost;
     this.stats.weather = weatherSystem.currentWeather;
     this.stats.isWeatherEnabled = weatherSystem.isEnabled;
-
-    // Calculate real-time dynamic combat telemetry
-    const tierIndex = this.player ? Math.min(this.player.tier, PLAYER_TIERS.length - 1) : 0;
-    const tierCfg = PLAYER_TIERS[tierIndex];
-    const speedBoostActive = this.speedBoostTimer > 0;
-    const currentSpeed = this.player ? this.player.speed : (tierCfg.speed + (speedBoostActive ? 35 : 0));
-    const reloadTime = this.player ? this.player.reloadMax : (speedBoostActive ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax);
-    const fireRate = Math.round((1 / Math.max(0.05, reloadTime)) * 10) / 10;
-    const bulletSpeed = Math.round(tierCfg.bulletSpeed * (speedBoostActive ? 1.15 : 1.0));
-
-    this.stats.combatStats = {
-      speed: Math.round(currentSpeed),
-      baseSpeed: tierCfg.speed,
-      speedBoostActive,
-      speedBoostRemaining: Math.round(this.speedBoostTimer * 10) / 10,
-      bulletSpeed,
-      reloadMax: Math.round(reloadTime * 100) / 100,
-      fireRate,
-      doubleShot: tierCfg.doubleShot,
-      canBreakSteel: tierCfg.canBreakSteel,
-      tier: tierIndex + 1,
-      tierName: tierCfg.name,
-    };
-
-    // Calculate active power-up buffs with live countdowns
-    const activeBuffs: ActiveBuffInfo[] = [];
-
-    if (this.speedBoostTimer > 0) {
-      activeBuffs.push({
-        id: 'speed_boost',
-        type: 'SPEED',
-        label: 'TĂNG TỐC (+35 Tốc Chạy & +25% Tốc Bắn)',
-        remaining: Math.round(this.speedBoostTimer * 10) / 10,
-        maxDuration: 8.0,
-        color: '#facc15',
-      });
-    }
-
-    if (this.player && this.player.shieldTime > 0) {
-      activeBuffs.push({
-        id: 'player_shield',
-        type: 'SHIELD',
-        label: 'KHIÊN BẤT TỬ (Bảo vệ tuyệt đối)',
-        remaining: Math.round(this.player.shieldTime * 10) / 10,
-        maxDuration: 10.0,
-        color: '#38bdf8',
-      });
-    }
-
-    if (this.clockFreezeTimer > 0) {
-      activeBuffs.push({
-        id: 'clock_freeze',
-        type: 'CLOCK',
-        label: 'ĐÓNG BĂNG ĐỊCH (Toàn bộ địch tê liệt)',
-        remaining: Math.round(this.clockFreezeTimer * 10) / 10,
-        maxDuration: 7.0,
-        color: '#67e8f9',
-      });
-    }
-
-    if (this.shovelTimer > 0) {
-      activeBuffs.push({
-        id: 'shovel_fortress',
-        type: 'SHOVEL',
-        label: 'CÔNG SỰ THÉP (Tường căn cứ bọc thép)',
-        remaining: Math.round(this.shovelTimer * 10) / 10,
-        maxDuration: 16.0,
-        color: '#94a3b8',
-      });
-    }
-
-    this.stats.activeBuffs = activeBuffs;
-    this.stats.zoom = this.zoom;
 
     if (this.onStatsUpdate) {
       const remainingEnemies = this.enemyQueue.length + this.enemies.length;

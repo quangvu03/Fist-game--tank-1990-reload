@@ -1,18 +1,5 @@
-import {
-  Play,
-  RotateCcw,
-  Home,
-  Volume2,
-  VolumeX,
-  Compass,
-  Crosshair,
-  BookOpen,
-  Sun,
-  CloudRain,
-  Snowflake,
-  Maximize2,
-} from 'lucide-react';
-import { ControlMode, WeatherType } from '../types/game';
+import { Play, RotateCcw, Home, Volume2, VolumeX, Compass, Crosshair, BookOpen } from 'lucide-react';
+import { ControlMode } from '../types/game';
 
 interface PauseModalProps {
   onResume: () => void;
@@ -23,11 +10,6 @@ interface PauseModalProps {
   controlMode: ControlMode;
   onToggleControlMode: () => void;
   onOpenGuide: () => void;
-  weather?: WeatherType;
-  isWeatherEnabled?: boolean;
-  onToggleWeather?: () => void;
-  zoom?: number;
-  onSetZoom?: (zoom: number) => void;
 }
 
 export function PauseModal({
@@ -39,175 +21,70 @@ export function PauseModal({
   controlMode,
   onToggleControlMode,
   onOpenGuide,
-  weather = 'CLEAR',
-  isWeatherEnabled = false,
-  onToggleWeather,
-  zoom = 1.15,
-  onSetZoom,
 }: PauseModalProps) {
-  const isWeatherActive = isWeatherEnabled && weather !== 'CLEAR';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 select-none animate-in fade-in duration-150">
-      <div className="w-full max-w-sm bg-slate-900 border border-slate-700/80 rounded-2xl p-5 sm:p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-white text-center">
-        {/* Tiêu đề Modal */}
-        <div className="inline-block px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-widest mb-2">
-          TRẠNG THÁI DỪNG
-        </div>
-        <h2 className="text-xl font-black tracking-wide text-white mb-1">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 select-none">
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl text-white text-center">
+        {/* Title */}
+        <h2 className="text-xl font-bold tracking-wider text-slate-100 mb-1">
           TẠM DỪNG TRẬN ĐẤU
         </h2>
-        <p className="text-xs text-slate-400 mb-5">
-          Tác chiến tạm hoãn. Bạn có thể tra cứu thông tin hoặc điều chỉnh thiết lập bên dưới.
+        <p className="text-xs text-slate-400 mb-6">
+          Trò chơi đang dừng. Bạn có thể thay đổi thiết lập hoặc tiếp tục tác chiến.
         </p>
 
-        {/* Các nút hành động chính */}
-        <div className="flex flex-col gap-2.5 mb-5">
-          {/* 1. Tiếp tục chơi */}
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-2.5 mb-6">
           <button
             onClick={onResume}
-            className="flex items-center justify-center gap-2 w-full py-3 text-xs font-black text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg transition-colors cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
             <span>TIẾP TỤC CHIẾN ĐẤU (P / ESC)</span>
           </button>
 
-          {/* 2. Sổ tay tra cứu quân sự (Được chuyển vào mục tạm dừng theo yêu cầu) */}
           <button
             onClick={onOpenGuide}
-            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-xl transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-emerald-300 bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-lg transition-colors cursor-pointer"
           >
             <BookOpen className="w-4 h-4" />
-            <span>SỔ TAY TRA CỨU & QUÂN SỰ</span>
+            <span>HƯỚNG DẪN & TRA CỨU ICON</span>
           </button>
 
-          {/* 3. Chơi lại Level này */}
           <button
             onClick={onRestartStage}
-            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>CHƠI LẠI LEVEL NÀY</span>
+            <span>CHƠI LẠI MÀN NÀY</span>
           </button>
 
-          {/* 4. Về màn hình chính */}
           <button
             onClick={onQuitToTitle}
-            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
             <Home className="w-4 h-4" />
             <span>VỀ MÀN HÌNH CHÍNH</span>
           </button>
         </div>
 
-        {/* Khung Thiết Lập Nhanh: Âm Thanh & Thời Tiết & Điều Khiển (Chuyển gọn vào đây) */}
-        <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 text-xs space-y-2.5 text-left">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center border-b border-slate-800/80 pb-1.5">
-            THIẾT LẬP TRẬN ĐẤU
-          </div>
+        {/* Quick Toggles */}
+        <div className="flex items-center justify-between border-t border-slate-800/80 pt-4 text-xs">
+          <button
+            onClick={onToggleControlMode}
+            className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
+          >
+            {controlMode === 'CLASSIC' ? <Compass className="w-4 h-4" /> : <Crosshair className="w-4 h-4 text-emerald-400" />}
+            <span>{controlMode === 'CLASSIC' ? 'Phím 4 Hướng' : 'Chuột 360°'}</span>
+          </button>
 
-          {/* Nút Âm thanh */}
-          <div className="flex items-center justify-between">
-            <span className="text-slate-300 text-xs">Âm thanh game:</span>
-            <button
-              onClick={onToggleMute}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                isMuted
-                  ? 'bg-red-950/60 text-red-400 border border-red-800/80'
-                  : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/80'
-              }`}
-            >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              <span>{isMuted ? 'ĐANG TẮT' : 'ĐANG BẬT'}</span>
-            </button>
-          </div>
-
-          {/* Nút Thời tiết */}
-          {onToggleWeather && (
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 text-xs">Hiệu ứng thời tiết:</span>
-              <button
-                onClick={onToggleWeather}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                  !isWeatherActive
-                    ? 'bg-slate-800 text-amber-300 border border-slate-700'
-                    : weather === 'RAIN'
-                    ? 'bg-sky-950 text-sky-400 border border-sky-800'
-                    : 'bg-cyan-950 text-cyan-300 border border-cyan-800'
-                }`}
-              >
-                {!isWeatherActive ? (
-                  <>
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
-                    <span>QUANG ĐÃNG (TẮT)</span>
-                  </>
-                ) : weather === 'RAIN' ? (
-                  <>
-                    <CloudRain className="w-3.5 h-3.5 text-sky-400" />
-                    <span>MƯA NHẸ</span>
-                  </>
-                ) : (
-                  <>
-                    <Snowflake className="w-3.5 h-3.5 text-cyan-300" />
-                    <span>TUYẾT RƠI</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Kiểu điều khiển */}
-          <div className="flex items-center justify-between">
-            <span className="text-slate-300 text-xs">Kiểu điều khiển:</span>
-            <button
-              onClick={onToggleControlMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
-            >
-              {controlMode === 'CLASSIC' ? (
-                <>
-                  <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>PHÍM 4 HƯỚNG</span>
-                </>
-              ) : (
-                <>
-                  <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>CHUỘT 360°</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Tỉ lệ phóng to bản đồ (Map Scale / Zoom) */}
-          {onSetZoom && (
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-slate-300 text-xs flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
-                Tỉ lệ map (Phím Z):
-              </span>
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                {[
-                  { val: 1.0, label: '100%' },
-                  { val: 1.15, label: '115%' },
-                  { val: 1.3, label: '130%' },
-                ].map((opt) => {
-                  const isActive = Math.abs(zoom - opt.val) < 0.05;
-                  return (
-                    <button
-                      key={opt.val}
-                      onClick={() => onSetZoom(opt.val)}
-                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-850'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <button
+            onClick={onToggleMute}
+            className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            <span>{isMuted ? 'Đang tắt âm' : 'Đang bật âm'}</span>
+          </button>
         </div>
       </div>
     </div>

@@ -1,11 +1,11 @@
 import { StageConfig, EnemyType, TileType } from '../types/game';
-import { STAGE_COLS, GRID_ROWS } from './constants';
+import { GRID_COLS, GRID_ROWS } from './constants';
 
-// Helper to create an empty 26x26 core stage blueprint grid
+// Helper to create an empty 26x26 grid
 function createEmptyGrid(): number[][] {
   const grid: number[][] = [];
   for (let r = 0; r < GRID_ROWS; r++) {
-    grid[r] = new Array(STAGE_COLS).fill(TileType.EMPTY);
+    grid[r] = new Array(GRID_COLS).fill(TileType.EMPTY);
   }
   return grid;
 }
@@ -458,7 +458,7 @@ export function generateSurvivalStage(wave: number): StageConfig {
       const val = Math.sin(seed + r * 7 + c * 13);
       if (val > 0.4) {
         grid[r][c] = TileType.BRICK;
-        if (c + 1 < STAGE_COLS) grid[r][c + 1] = TileType.BRICK;
+        if (c + 1 < GRID_COLS) grid[r][c + 1] = TileType.BRICK;
       } else if (val < -0.65) {
         grid[r][c] = TileType.STEEL;
       } else if (val > 0.25 && val <= 0.4) {

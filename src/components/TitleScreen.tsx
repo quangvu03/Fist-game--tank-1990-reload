@@ -221,7 +221,7 @@ export function TitleScreen({
         {/* Stage Selector for Campaign */}
         {selectedMode === 'CAMPAIGN' && showStageSelector && (
           <div className="flex items-center gap-2 mb-6 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-lg text-xs">
-            <span className="text-slate-400 font-semibold">Chọn level bắt đầu:</span>
+            <span className="text-slate-400 font-semibold">Chọn màn bắt đầu:</span>
             <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                 <button

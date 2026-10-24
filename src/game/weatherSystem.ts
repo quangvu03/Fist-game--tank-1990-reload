@@ -67,8 +67,6 @@ interface WaterRipple {
 export class WeatherSystem {
   public currentWeather: WeatherType = 'CLEAR';
   public isEnabled: boolean = false;
-  public width: number = CANVAS_SIZE;
-  public height: number = CANVAS_SIZE;
   private cycleTimer: number = 0;
   private readonly cycleDuration: number = 60;
 
@@ -90,21 +88,13 @@ export class WeatherSystem {
     this.initParticles();
   }
 
-  public setBounds(w: number, h: number) {
-    if (this.width !== w || this.height !== h) {
-      this.width = Math.max(CANVAS_SIZE, w);
-      this.height = Math.max(CANVAS_SIZE, h);
-      this.initParticles();
-    }
-  }
-
   private initParticles() {
     // Subtle, low-density particle count to avoid visual clutter and eye strain
     this.raindrops = [];
-    for (let i = 0; i < 45; i++) {
+    for (let i = 0; i < 35; i++) {
       this.raindrops.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
+        x: Math.random() * CANVAS_SIZE,
+        y: Math.random() * CANVAS_SIZE,
         length: 8 + Math.random() * 8,
         speed: 260 + Math.random() * 140,
         alpha: 0.18 + Math.random() * 0.22, // Faint, translucent
@@ -112,10 +102,10 @@ export class WeatherSystem {
     }
 
     this.snowflakes = [];
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 28; i++) {
       this.snowflakes.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
+        x: Math.random() * CANVAS_SIZE,
+        y: Math.random() * CANVAS_SIZE,
         radius: 1.0 + Math.random() * 1.6,
         speedY: 28 + Math.random() * 25,
         driftSpeed: 1.0 + Math.random() * 1.5,
@@ -179,14 +169,14 @@ export class WeatherSystem {
         drop.y += drop.speed * dt;
         drop.x -= drop.speed * 0.18 * dt;
 
-        if (drop.y > this.height) {
+        if (drop.y > CANVAS_SIZE) {
           drop.y = -8;
-          drop.x = Math.random() * (this.width + 60);
+          drop.x = Math.random() * (CANVAS_SIZE + 60);
 
           if (Math.random() < 0.15) {
             this.ripples.push({
               x: drop.x,
-              y: this.height - Math.random() * 30,
+              y: CANVAS_SIZE - Math.random() * 30,
               radius: 1,
               maxRadius: 3 + Math.random() * 3,
               life: 0.25,
@@ -207,12 +197,12 @@ export class WeatherSystem {
         flake.driftOffset += flake.driftSpeed * dt;
         flake.x += Math.sin(flake.driftOffset) * 14 * dt;
 
-        if (flake.y > this.height) {
+        if (flake.y > CANVAS_SIZE) {
           flake.y = -4;
-          flake.x = Math.random() * this.width;
+          flake.x = Math.random() * CANVAS_SIZE;
         }
-        if (flake.x < -10) flake.x = this.width + 5;
-        if (flake.x > this.width + 10) flake.x = -5;
+        if (flake.x < -10) flake.x = CANVAS_SIZE + 5;
+        if (flake.x > CANVAS_SIZE + 10) flake.x = -5;
       }
     }
   }

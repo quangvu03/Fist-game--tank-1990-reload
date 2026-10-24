@@ -1,16 +1,19 @@
 import { EnemyType, Direction, TileType } from '../types/game';
 
-export const GRID_COLS = 26;
-export const GRID_ROWS = 26;
-export const TILE_SIZE = 26; // 26 * 26 = 676x676 virtual canvas size
-export const CANVAS_SIZE = GRID_COLS * TILE_SIZE; // 676px
+export const STAGE_COLS = 26; // Stage authoring blueprint width
+export const GRID_COLS = 34; // Expanded widescreen battlefield columns (wide layout)
+export const GRID_ROWS = 26; // Kept at 26 rows so vertical height fits cleanly on screen
+export const TILE_SIZE = 26; // 26 * 26 = 676px height, 34 * 26 = 884px width
+export const CANVAS_WIDTH = GRID_COLS * TILE_SIZE; // 884px
+export const CANVAS_HEIGHT = GRID_ROWS * TILE_SIZE; // 676px
+export const CANVAS_SIZE = CANVAS_HEIGHT; // 676px backwards compatibility
 
 export const TANK_SIZE = 26;
 export const BULLET_RADIUS = 3.5;
 export const MISSILE_RADIUS = 5.5;
 
-export const BASE_COORD = { col: 12, row: 24 }; // 2x2 base footprint at bottom center
-export const BASE_CENTER = { x: 13 * TILE_SIZE, y: 24.8 * TILE_SIZE };
+export const BASE_COORD = { col: 16, row: 24 }; // 2x2 base footprint at bottom center (cols 16 & 17, rows 24 & 25)
+export const BASE_CENTER = { x: 17 * TILE_SIZE, y: 24.8 * TILE_SIZE }; // 442px (exactly 884 / 2)
 export const BASE_SHIELD_RADIUS = 58;
 
 export interface BaseTierConfig {
@@ -47,7 +50,7 @@ export const BASE_TIERS: BaseTierConfig[] = [
     hasForcefield: false,
     hasAutoTurret: false,
     turretFireRate: 0,
-    upgradeCost: 800,
+    upgradeCost: 500,
     color: '#b45309',
     description: 'Hàng rào thùng gỗ tiếp tế cơ bản, chưa có màn chắn năng lượng.',
   },
@@ -65,7 +68,7 @@ export const BASE_TIERS: BaseTierConfig[] = [
     hasForcefield: true,
     hasAutoTurret: false,
     turretFireRate: 0,
-    upgradeCost: 1500,
+    upgradeCost: 1200,
     color: '#64748b',
     description: 'Tường bê tông gia cố chịu 2 phát đạn, màn chắn sơ cấp 50 HP.',
   },
@@ -83,7 +86,7 @@ export const BASE_TIERS: BaseTierConfig[] = [
     hasForcefield: true,
     hasAutoTurret: true,
     turretFireRate: 2.2,
-    upgradeCost: 2500,
+    upgradeCost: 2200,
     color: '#0284c7',
     description: 'Tường thép hợp kim chống đạn, màn chắn điện từ 100 HP, pháo tự động.',
   },
@@ -101,7 +104,7 @@ export const BASE_TIERS: BaseTierConfig[] = [
     hasForcefield: true,
     hasAutoTurret: true,
     turretFireRate: 1.6,
-    upgradeCost: 4000,
+    upgradeCost: 3500,
     color: '#eab308',
     description: 'Màn chắn plasma hoàng kim 180 HP giảm sát thương, pháo liên thanh bảo vệ.',
   },

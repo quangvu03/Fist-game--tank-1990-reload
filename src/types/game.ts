@@ -140,6 +140,29 @@ export interface StageConfig {
 
 export type WeatherType = 'CLEAR' | 'RAIN' | 'SNOW';
 
+export interface PlayerCombatStats {
+  speed: number;               // Actual movement speed (px/s), factoring in tier and buffs
+  baseSpeed: number;           // Standard speed for current tier
+  speedBoostActive: boolean;   // Whether temporary speed item is active
+  speedBoostRemaining: number; // Seconds remaining for speed boost (0 if inactive)
+  bulletSpeed: number;         // Velocity of bullets (px/s)
+  reloadMax: number;           // Seconds per shot cooldown (e.g. 0.35s)
+  fireRate: number;            // Shots per second (e.g. 2.85 shots/s)
+  doubleShot: boolean;         // Twin cannon active
+  canBreakSteel: boolean;      // High-caliber armor piercing (can pierce steel)
+  tier: number;                // 1, 2, 3, 4
+  tierName: string;            // Name of current tank class
+}
+
+export interface ActiveBuffInfo {
+  id: string;
+  type: PowerUpType;
+  label: string;
+  remaining: number;
+  maxDuration: number;
+  color: string;
+}
+
 export interface GameStats {
   score: number;
   highScore: number;
@@ -164,4 +187,7 @@ export interface GameStats {
   gameMode: GameMode;
   weather: WeatherType;
   isWeatherEnabled: boolean;
+  combatStats: PlayerCombatStats;
+  activeBuffs: ActiveBuffInfo[];
+  zoom?: number;
 }

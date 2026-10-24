@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { GameEngine } from './game/engine';
 import { GameMode, GameStatus, ControlMode, GameStats, StageConfig } from './types/game';
 import { CAMPAIGN_STAGES, generateSurvivalStage, generateBossRushStage } from './game/stages';
-import { CANVAS_SIZE } from './game/constants';
 import { soundEngine } from './audio/soundEngine';
 import { TitleScreen } from './components/TitleScreen';
 import { GameHUD, GameFooter } from './components/GameHUD';
@@ -19,9 +18,9 @@ export default function App() {
   const [gameStatus, setGameStatus] = useState<GameStatus>('TITLE');
   const [gameMode, setGameMode] = useState<GameMode>('CAMPAIGN');
   const [controlMode, setControlMode] = useState<ControlMode>('CLASSIC');
-  const [crtEnabled, setCrtEnabled] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(() => soundEngine.getMuted());
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
+  const wasPlayingBeforeGuideRef = useRef<boolean>(false);
 
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
   const [currentStageConfig, setCurrentStageConfig] = useState<StageConfig>(CAMPAIGN_STAGES[0]);
@@ -50,6 +49,20 @@ export default function App() {
     gameMode: 'CAMPAIGN',
     weather: 'CLEAR',
     isWeatherEnabled: false,
+    combatStats: {
+      speed: 110,
+      baseSpeed: 110,
+      speedBoostActive: false,
+      speedBoostRemaining: 0,
+      bulletSpeed: 260,
+      reloadMax: 0.45,
+      fireRate: 2.2,
+      doubleShot: false,
+      canBreakSteel: false,
+      tier: 1,
+      tierName: 'Pháo Cơ Bản',
+    },
+    activeBuffs: [],
   });
 
   const [remainingEnemies, setRemainingEnemies] = useState<number>(0);
@@ -93,93 +106,153 @@ export default function App() {
 
   // Start new stage in engine
   const startEngineWithStage = useCallback(
-    (cfg: StageConfig, mode: GameMode, cMode: ControlMode, _preserveTier: boolean = false) => {
+    (
+      cfg: StageConfig,
+      mode: GameMode,
+      cMode: ControlMode,
+      _preserveTier: boolean = false,
+      initialProgression?: {
+        baseTier?: number;
+        playerTier?: number;
+        score?: number;
+        lives?: number;
+      }
+    ) => {
       if (!canvasRef.current) return;
 
       if (engineRef.current) {
         engineRef.current.destroy();
+        engineRef.current = null;
       }
 
-      const engine = new GameEngine(canvasRef.current, cfg, mode, {
-        onStatsUpdate: (updatedStats, remaining) => {
-          setStats(updatedStats);
-          setRemainingEnemies(remaining);
+      const engine = new GameEngine(
+        canvasRef.current,
+        cfg,
+        mode,
+        {
+          onStatsUpdate: (newStats, enemiesCount) => {
+            setStats(newStats);
+            setRemainingEnemies(enemiesCount);
+          },
+          onGameOver: (won) => {
+            handleGameOver(won);
+          },
+          onStageClear: () => {
+            handleStageClear();
+          },
         },
-        onGameOver: handleGameOver,
-        onStageClear: handleStageClear,
-      });
+        initialProgression
+      );
 
       engine.setControlMode(cMode);
       engine.start();
       engineRef.current = engine;
-      setGameStatus('PLAYING');
     },
     [handleGameOver, handleStageClear]
   );
 
-  // Start Game from Title
+  // Start Game from Title Screen
   const handleStartGame = useCallback(
-    (mode: GameMode, cMode: ControlMode, startStageNum: number = 1) => {
-      soundEngine.resumeAudio();
+    (mode: GameMode, cMode: ControlMode, startStageIndex: number = 1) => {
       setGameMode(mode);
       setControlMode(cMode);
 
-      let initialConfig: StageConfig;
+      let cfg: StageConfig;
       let stageIdx = 0;
 
       if (mode === 'CAMPAIGN') {
-        stageIdx = Math.max(0, Math.min(CAMPAIGN_STAGES.length - 1, startStageNum - 1));
-        initialConfig = CAMPAIGN_STAGES[stageIdx];
+        stageIdx = Math.max(0, Math.min(startStageIndex - 1, CAMPAIGN_STAGES.length - 1));
+        cfg = CAMPAIGN_STAGES[stageIdx];
       } else if (mode === 'SURVIVAL') {
         stageIdx = 0;
-        initialConfig = generateSurvivalStage(1);
+        cfg = generateSurvivalStage(1);
       } else {
         stageIdx = 0;
-        initialConfig = generateBossRushStage();
+        cfg = generateBossRushStage();
       }
 
       setCurrentStageIndex(stageIdx);
-      setCurrentStageConfig(initialConfig);
-      setStats((prev) => ({
-        ...prev,
-        score: 0,
-        lives: 3,
-        stage: initialConfig.id,
-        gameMode: mode,
-        kills: { SCOUT: 0, ASSAULT: 0, HEAVY: 0, ARTILLERY: 0, BOSS: 0 },
-        totalKills: 0,
-      }));
+      setCurrentStageConfig(cfg);
+      setGameStatus('PLAYING');
 
-      // Canvas is permanently mounted, start directly without race conditions
-      startEngineWithStage(initialConfig, mode, cMode, false);
+      setTimeout(() => {
+        startEngineWithStage(cfg, mode, cMode, false, {
+          baseTier: 1,
+          playerTier: 1,
+          score: 0,
+          lives: 3,
+        });
+      }, 50);
     },
     [startEngineWithStage]
   );
 
+  // Restart Current Stage
+  const handleRestartStage = useCallback(() => {
+    setGameStatus('PLAYING');
+    const prevBaseTier = engineRef.current ? engineRef.current.getBaseTier() : 1;
+    const prevPlayerTier = engineRef.current ? engineRef.current.getPlayerTier() : 1;
+    const prevScore = engineRef.current ? engineRef.current.getScore() : 0;
+    const prevLives = engineRef.current ? engineRef.current.getLives() : 3;
+
+    setTimeout(() => {
+      startEngineWithStage(
+        currentStageConfig,
+        gameMode,
+        controlMode,
+        true,
+        {
+          baseTier: prevBaseTier,
+          playerTier: prevPlayerTier,
+          score: prevScore,
+          lives: prevLives,
+        }
+      );
+    }, 50);
+  }, [currentStageConfig, gameMode, controlMode, startEngineWithStage]);
+
   // Next Stage in Campaign or Survival
   const handleNextStage = useCallback(() => {
-    let nextConfig: StageConfig;
-    const nextIdx = currentStageIndex + 1;
+    let nextIdx = currentStageIndex + 1;
+    let nextCfg: StageConfig;
 
     if (gameMode === 'CAMPAIGN') {
-      nextConfig = CAMPAIGN_STAGES[nextIdx];
+      if (nextIdx >= CAMPAIGN_STAGES.length) {
+        setGameStatus('VICTORY');
+        return;
+      }
+      nextCfg = CAMPAIGN_STAGES[nextIdx];
+    } else if (gameMode === 'SURVIVAL') {
+      nextCfg = generateSurvivalStage(nextIdx + 1);
     } else {
-      nextConfig = generateSurvivalStage(nextIdx + 1);
+      setGameStatus('VICTORY');
+      return;
     }
 
     setCurrentStageIndex(nextIdx);
-    setCurrentStageConfig(nextConfig);
-    startEngineWithStage(nextConfig, gameMode, controlMode, true);
-  }, [currentStageIndex, gameMode, controlMode, startEngineWithStage]);
+    setCurrentStageConfig(nextCfg);
+    setGameStatus('PLAYING');
 
-  // Restart current stage
-  const handleRestartStage = useCallback(() => {
-    setStats((prev) => ({
-      ...prev,
-      lives: 3,
-    }));
-    startEngineWithStage(currentStageConfig, gameMode, controlMode, false);
-  }, [currentStageConfig, gameMode, controlMode, startEngineWithStage]);
+    const prevBaseTier = engineRef.current ? engineRef.current.getBaseTier() : 1;
+    const prevPlayerTier = engineRef.current ? engineRef.current.getPlayerTier() : 1;
+    const prevScore = engineRef.current ? engineRef.current.getScore() : 0;
+    const prevLives = engineRef.current ? engineRef.current.getLives() : 3;
+
+    setTimeout(() => {
+      startEngineWithStage(
+        nextCfg,
+        gameMode,
+        controlMode,
+        true,
+        {
+          baseTier: prevBaseTier,
+          playerTier: prevPlayerTier,
+          score: prevScore,
+          lives: prevLives,
+        }
+      );
+    }, 50);
+  }, [currentStageIndex, gameMode, controlMode, startEngineWithStage]);
 
   // Pause / Resume
   const handleTogglePause = useCallback(() => {
@@ -192,6 +265,26 @@ export default function App() {
     }
   }, [gameStatus]);
 
+  // Open guide modal
+  const handleOpenGuide = useCallback(() => {
+    if (gameStatus === 'PLAYING') {
+      engineRef.current?.pause();
+      wasPlayingBeforeGuideRef.current = true;
+      setGameStatus('PAUSED');
+    }
+    setIsGuideOpen(true);
+  }, [gameStatus]);
+
+  // Close guide modal
+  const handleCloseGuide = useCallback(() => {
+    setIsGuideOpen(false);
+    if (wasPlayingBeforeGuideRef.current && gameStatus === 'PAUSED') {
+      engineRef.current?.resume();
+      setGameStatus('PLAYING');
+      wasPlayingBeforeGuideRef.current = false;
+    }
+  }, [gameStatus]);
+
   // Quit to Title
   const handleQuitToTitle = useCallback(() => {
     if (engineRef.current) {
@@ -201,10 +294,33 @@ export default function App() {
     setGameStatus('TITLE');
   }, []);
 
-  // Global pause shortcut (Escape or KeyP)
+  // Global pause shortcut (Escape or KeyP) and Guide toggle (KeyH)
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
-      if (e.code === 'Escape' || e.code === 'KeyP') {
+      if (e.code === 'KeyH') {
+        e.preventDefault();
+        if (isGuideOpen) {
+          handleCloseGuide();
+        } else {
+          handleOpenGuide();
+        }
+        return;
+      }
+
+      if (e.code === 'Escape') {
+        if (isGuideOpen) {
+          e.preventDefault();
+          handleCloseGuide();
+          return;
+        }
+        if (gameStatus === 'PLAYING' || gameStatus === 'PAUSED') {
+          e.preventDefault();
+          handleTogglePause();
+        }
+        return;
+      }
+
+      if (e.code === 'KeyP') {
         if (gameStatus === 'PLAYING' || gameStatus === 'PAUSED') {
           e.preventDefault();
           handleTogglePause();
@@ -213,7 +329,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [gameStatus, handleTogglePause]);
+  }, [gameStatus, handleTogglePause, isGuideOpen, handleOpenGuide, handleCloseGuide]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -239,68 +355,53 @@ export default function App() {
     engineRef.current?.toggleWeather();
   }, []);
 
+  const handleCycleZoom = useCallback(() => {
+    engineRef.current?.cycleZoom();
+  }, []);
+
+  const handleSetZoom = useCallback((zoom: number) => {
+    engineRef.current?.setZoom(zoom);
+  }, []);
+
   return (
-    <main className="relative w-screen h-screen overflow-hidden bg-slate-950 flex items-center justify-center select-none font-sans p-1 sm:p-3">
-      {/* 1. Permanent Arena & Canvas Container (Centered, unified arcade console format) */}
+    <main className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none font-sans p-0 m-0">
+      {/* 1. Màn chơi chính: CHỈ CÓ 2 THANH TRẠNG THÁI TRÊN VÀ DƯỚI, MAP SÁT VIỀN 100% */}
       <div
-        className={`relative flex flex-col items-center justify-center max-w-[min(98vw,calc(100vh-14px))] w-full h-full max-h-[min(98vh,860px)] transition-opacity duration-300 ${
+        className={`relative z-10 flex flex-col w-full h-full overflow-hidden transition-opacity duration-200 ${
           gameStatus === 'TITLE' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
         }`}
       >
-        {/* Arcade Cabinet Chassis */}
-        <div className="relative flex flex-col w-full h-full rounded-2xl overflow-hidden border-2 border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.9)] bg-slate-950">
-          {/* Top Compact HUD Bar (Streamlined, compact stats, never obscures tiles) */}
-          <GameHUD
-            stats={stats}
-            remainingEnemies={remainingEnemies}
-            isPaused={gameStatus === 'PAUSED'}
-            isMuted={isMuted}
-            controlMode={controlMode}
-            crtEnabled={crtEnabled}
-            onTogglePause={handleTogglePause}
-            onToggleMute={handleToggleMute}
-            onToggleControlMode={handleToggleControlMode}
-            onToggleCrt={() => setCrtEnabled(!crtEnabled)}
-            onUpgradeBase={handleUpgradeBase}
-            onToggleWeather={handleToggleWeather}
-            onOpenGuide={() => setIsGuideOpen(true)}
+        {/* THANH TRẠNG THÁI PHÍA TRÊN (GameHUD) - Sát mép 100% bề ngang */}
+        <GameHUD
+          stats={stats}
+          remainingEnemies={remainingEnemies}
+          isPaused={gameStatus === 'PAUSED'}
+          onTogglePause={handleTogglePause}
+          onUpgradeBase={handleUpgradeBase}
+          onCycleZoom={handleCycleZoom}
+        />
+
+        {/* MAP CỦA GAME: SÁT VIỀN 100% TRÁI VÀ PHẢI, HOÀN TOÀN KHÔNG CÓ KHOẢNG ĐEN */}
+        <div className="relative flex-1 w-full min-h-0 flex items-stretch justify-stretch overflow-hidden bg-slate-950">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full block cursor-crosshair select-none [image-rendering:pixelated]"
           />
 
-          {/* Battlefield Arena Canvas Area (100% unobstructed, crisp, beautiful ground) */}
-          <div className="relative flex-1 flex items-center justify-center bg-slate-950 overflow-hidden min-h-0">
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_SIZE}
-              height={CANVAS_SIZE}
-              className="w-full h-full max-w-full max-h-full object-contain block cursor-crosshair shadow-2xl"
+          {/* Phím ảo điều khiển cảm ứng cho di động/máy tính bảng (hiển thị mờ nổi bên trên map) */}
+          <div className="md:hidden absolute bottom-2 left-2 right-2 pointer-events-none z-20 flex justify-between">
+            <TouchControls
+              onDirectionInput={handleVirtualDirection}
+              onFireInput={handleVirtualFire}
             />
-
-            {/* Optional Retro CRT Scanline Shader */}
-            {crtEnabled && (
-              <div
-                className="pointer-events-none absolute inset-0 z-10 opacity-30 mix-blend-overlay"
-                style={{
-                  backgroundImage:
-                    'repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.45) 0px, rgba(0, 0, 0, 0.45) 1px, transparent 1px, transparent 3px)',
-                }}
-              />
-            )}
           </div>
-
-          {/* Bottom Hint Footer */}
-          <GameFooter highScore={stats.highScore} />
         </div>
 
-        {/* Touch Controls for mobile/tablet docked cleanly below */}
-        <div className="md:hidden w-full max-w-[min(94vw,500px)] mt-1.5 shrink-0">
-          <TouchControls
-            onDirectionInput={handleVirtualDirection}
-            onFireInput={handleVirtualFire}
-          />
-        </div>
+        {/* THANH TRẠNG THÁI PHÍA DƯỚI (GameFooter) - Sát mép 100% bề ngang */}
+        <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
 
-        {/* Pause Modal */}
-        {gameStatus === 'PAUSED' && (
+        {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh, Điều khiển) */}
+        {gameStatus === 'PAUSED' && !isGuideOpen && (
           <PauseModal
             onResume={handleTogglePause}
             onRestartStage={handleRestartStage}
@@ -309,7 +410,12 @@ export default function App() {
             onToggleMute={handleToggleMute}
             controlMode={controlMode}
             onToggleControlMode={handleToggleControlMode}
-            onOpenGuide={() => setIsGuideOpen(true)}
+            onOpenGuide={handleOpenGuide}
+            weather={stats.weather}
+            isWeatherEnabled={stats.isWeatherEnabled}
+            onToggleWeather={handleToggleWeather}
+            zoom={stats.zoom || 1.15}
+            onSetZoom={handleSetZoom}
           />
         )}
 
@@ -331,7 +437,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 2. Title Screen Overlay (shown when gameStatus === 'TITLE') */}
+      {/* 2. Title Screen Overlay (hiển thị khi gameStatus === 'TITLE') */}
       {gameStatus === 'TITLE' && (
         <div className="absolute inset-0 z-30">
           <TitleScreen
@@ -339,7 +445,7 @@ export default function App() {
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
             highScore={stats.highScore}
-            onOpenGuide={() => setIsGuideOpen(true)}
+            onOpenGuide={handleOpenGuide}
           />
         </div>
       )}
@@ -347,7 +453,7 @@ export default function App() {
       {/* 3. Global Game Guide & Icon Codex Modal */}
       <GameGuideModal
         isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
+        onClose={handleCloseGuide}
       />
     </main>
   );

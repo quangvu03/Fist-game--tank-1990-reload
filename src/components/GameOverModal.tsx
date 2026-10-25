@@ -37,9 +37,9 @@ export function GameOverModal({
 
           <h2 className={`text-2xl font-black tracking-wide ${isWon ? 'text-emerald-400' : 'text-red-400'}`}>
             {isVictory
-              ? 'TOÀN THẮNG CHIẾN DỊCH!'
+              ? (stats.gameMode === 'CAMPAIGN' ? 'TOÀN THẮNG CHIẾN DỊCH!' : 'CHIẾN THẮNG VANG DỘI!')
               : isStageClear
-              ? `VƯỢT QUA LEVEL ${stats.stage}!`
+              ? (stats.gameMode === 'SURVIVAL' ? `SỐNG SÓT ĐỢT ${stats.stage}!` : `VƯỢT QUA LEVEL ${stats.stage}!`)
               : stats.baseHp <= 0
               ? 'SỞ CHỈ HUY BỊ HỦY DIỆT!'
               : 'XE TĂNG BỊ PHÁ HỦY!'}
@@ -47,7 +47,9 @@ export function GameOverModal({
 
           <p className="text-xs text-slate-400 mt-1">
             {isWon
-              ? 'Bạn đã quét sạch toàn bộ lực lượng thiết giáp địch trên chiến trường.'
+              ? (stats.gameMode === 'SURVIVAL'
+                  ? `Bạn đã phòng ngự kiên cường và quét sạch toàn bộ quân đoàn địch Đợt ${stats.stage}.`
+                  : 'Bạn đã quét sạch toàn bộ lực lượng thiết giáp địch trên chiến trường.')
               : 'Lực lượng của bạn đã cạn kiệt. Hãy tái tập hợp và phản công!'}
           </p>
         </div>
@@ -102,7 +104,11 @@ export function GameOverModal({
           <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2.5 mb-5 text-xs text-emerald-300 flex items-center justify-between">
             <span className="font-semibold flex items-center gap-1.5">
               <span>🏰</span>
-              <span>LỚP BẢO VỆ CĂN CỨ LEVEL ${stats.stage + 1}:</span>
+              <span>
+                {stats.gameMode === 'SURVIVAL'
+                  ? `CHIẾN TRƯỜNG MỞ RỘNG (ĐỢT ${stats.stage + 1}):`
+                  : `LỚP BẢO VỆ CĂN CỨ LEVEL ${stats.stage + 1}:`}
+              </span>
             </span>
             <span className="font-bold text-amber-300 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-700">
               {stats.stage + 1 >= 9
@@ -126,7 +132,11 @@ export function GameOverModal({
               className="flex items-center justify-center gap-2 w-full py-3 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg transition-colors cursor-pointer"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>TIẾN VÀO LEVEL TIẾP THEO (LEVEL {stats.stage + 1})</span>
+              <span>
+                {stats.gameMode === 'SURVIVAL'
+                  ? `TIẾN VÀO ĐỢT TIẾP THEO (ĐỢT ${stats.stage + 1})`
+                  : `TIẾN VÀO LEVEL TIẾP THEO (LEVEL ${stats.stage + 1})`}
+              </span>
             </button>
           ) : (
             <button

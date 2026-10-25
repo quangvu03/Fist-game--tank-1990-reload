@@ -84,18 +84,18 @@ export default function App() {
     });
   }, []);
 
-  // Stage clear handler
+  // Stage clear handler - Campaign completes at Level 10, Survival continues wave-by-wave
   const handleStageClear = useCallback(() => {
-    if (gameMode === 'CAMPAIGN') {
-      if (currentStageIndex + 1 < CAMPAIGN_STAGES.length) {
-        setGameStatus('STAGE_CLEAR');
-      } else {
-        setGameStatus('VICTORY');
-      }
-    } else if (gameMode === 'SURVIVAL') {
-      setGameStatus('STAGE_CLEAR');
-    } else {
+    if (gameMode === 'BOSS_RUSH') {
       setGameStatus('VICTORY');
+    } else if (gameMode === 'CAMPAIGN') {
+      if (currentStageIndex + 1 >= CAMPAIGN_STAGES.length) {
+        setGameStatus('VICTORY');
+      } else {
+        setGameStatus('STAGE_CLEAR');
+      }
+    } else {
+      setGameStatus('STAGE_CLEAR');
     }
   }, [gameMode, currentStageIndex]);
 
@@ -211,19 +211,20 @@ export default function App() {
     }, 50);
   }, [currentStageConfig, gameMode, controlMode, startEngineWithStage]);
 
-  // Next Stage in Campaign or Survival
+  // Next Stage in Campaign (Levels 1-10 -> Endless Survival Waves 11+) or Survival/Boss Rush
   const handleNextStage = useCallback(() => {
     let nextIdx = currentStageIndex + 1;
     let nextCfg: StageConfig;
 
     if (gameMode === 'CAMPAIGN') {
-      if (nextIdx >= CAMPAIGN_STAGES.length) {
+      if (nextIdx < CAMPAIGN_STAGES.length) {
+        nextCfg = CAMPAIGN_STAGES[nextIdx];
+      } else {
         setGameStatus('VICTORY');
         return;
       }
-      nextCfg = CAMPAIGN_STAGES[nextIdx];
     } else if (gameMode === 'SURVIVAL') {
-      nextCfg = generateSurvivalStage(nextIdx + 1);
+      nextCfg = generateSurvivalStage(nextIdx + 1, nextIdx + 1);
     } else {
       setGameStatus('VICTORY');
       return;
@@ -370,7 +371,6 @@ export default function App() {
           isPaused={gameStatus === 'PAUSED'}
           onTogglePause={handleTogglePause}
           onUpgradeBase={handleUpgradeBase}
-          onOpenGuide={handleOpenGuide}
         />
 
         {/* MAP CỦA GAME: SÁT VIỀN 100%, ĐỘ CAO VÀ RỘNG TỐI ĐA TRÊN MÀN HÌNH */}
@@ -415,9 +415,8 @@ export default function App() {
             isVictory={gameStatus === 'VICTORY'}
             isStageClear={gameStatus === 'STAGE_CLEAR'}
             hasNextStage={
-              gameMode === 'CAMPAIGN'
-                ? currentStageIndex + 1 < CAMPAIGN_STAGES.length
-                : gameMode === 'SURVIVAL'
+              gameMode === 'SURVIVAL' ||
+              (gameMode === 'CAMPAIGN' && currentStageIndex + 1 < CAMPAIGN_STAGES.length)
             }
             stats={stats}
             onNextStage={handleNextStage}

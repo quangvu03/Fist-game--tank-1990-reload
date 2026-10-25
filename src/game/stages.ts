@@ -1,5 +1,5 @@
 import { StageConfig, EnemyType, TileType } from '../types/game';
-import { STAGE_COLS, GRID_ROWS } from './constants';
+import { STAGE_COLS, GRID_ROWS, SURVIVAL_COLS, SURVIVAL_ROWS, SURVIVAL_BASE_COORD } from './constants';
 
 // Helper to create an empty 26x26 core stage blueprint grid
 function createEmptyGrid(): number[][] {
@@ -446,50 +446,147 @@ export const CAMPAIGN_STAGES: StageConfig[] = [
   makeStage10(),
 ];
 
-// Generate Endless Survival stage based on wave number
-export function generateSurvivalStage(wave: number): StageConfig {
-  const grid = createEmptyGrid();
-  addBaseAndFortress(grid, wave);
+// Generate Massive Open Warzone for Survival Mode (56 cols x 40 rows)
+export function generateSurvivalStage(wave: number, stageId: number = wave): StageConfig {
+  const rows = SURVIVAL_ROWS;
+  const cols = SURVIVAL_COLS;
+  const grid: number[][] = [];
+  for (let r = 0; r < rows; r++) {
+    grid[r] = new Array(cols).fill(TileType.EMPTY);
+  }
 
-  // Random tactical clusters
-  const seed = wave * 1337;
-  for (let r = 3; r <= 19; r += 2) {
-    for (let c = 2; c <= 23; c += 2) {
-      const val = Math.sin(seed + r * 7 + c * 13);
-      if (val > 0.4) {
+  // Base at SURVIVAL_BASE_COORD (cols 27, 28, rows 36, 37)
+  const bCol = SURVIVAL_BASE_COORD.col;
+  const bRow = SURVIVAL_BASE_COORD.row;
+  grid[bRow][bCol] = TileType.BASE;
+  grid[bRow][bCol + 1] = TileType.BASE;
+  grid[bRow + 1][bCol] = TileType.BASE;
+  grid[bRow + 1][bCol + 1] = TileType.BASE;
+
+  // Base fortress walls (Concrete/Steel for survival)
+  const wallType = wave >= 3 ? TileType.STEEL : TileType.REINFORCED_WALL;
+  for (let c = bCol - 1; c <= bCol + 2; c++) {
+    grid[bRow - 1][c] = wallType;
+  }
+  grid[bRow][bCol - 1] = wallType;
+  grid[bRow + 1][bCol - 1] = wallType;
+  grid[bRow][bCol + 2] = wallType;
+  grid[bRow + 1][bCol + 2] = wallType;
+
+  // 1. Water Canals and Ponds (Ô nước & Kênh đào chiến lược)
+  // West Canal: col 14, rows 5..30
+  for (let r = 5; r <= 30; r++) {
+    // Ice bridge crossings at rows 11-12 and 22-23
+    if ((r >= 11 && r <= 12) || (r >= 22 && r <= 23)) {
+      grid[r][14] = TileType.ICE;
+    } else {
+      grid[r][14] = TileType.WATER;
+    }
+  }
+
+  // East Canal: col 41, rows 5..30
+  for (let r = 5; r <= 30; r++) {
+    if ((r >= 11 && r <= 12) || (r >= 22 && r <= 23)) {
+      grid[r][41] = TileType.ICE;
+    } else {
+      grid[r][41] = TileType.WATER;
+    }
+  }
+
+  // Center Northern Lake (Rows 12..15, Cols 24..31)
+  for (let r = 12; r <= 15; r++) {
+    for (let c = 24; c <= 31; c++) {
+      grid[r][c] = TileType.WATER;
+    }
+  }
+  // Ice causeway in middle of lake (col 27-28, row 13-14)
+  grid[13][27] = TileType.ICE;
+  grid[13][28] = TileType.ICE;
+  grid[14][27] = TileType.ICE;
+  grid[14][28] = TileType.ICE;
+
+  // 2. Dày đặc Tường & Thùng gỗ (Dense Bricks & Wooden Crates)
+  const seed = wave * 2026 + 77;
+  for (let r = 3; r < rows - 4; r += 2) {
+    for (let c = 2; c < cols - 2; c += 2) {
+      // Don't build over base area
+      if (c >= bCol - 2 && c <= bCol + 3 && r >= bRow - 3) continue;
+      // Don't build over canals
+      if (c === 14 || c === 41) continue;
+      // Don't build over central lake
+      if (c >= 23 && c <= 32 && r >= 11 && r <= 16) continue;
+
+      const val = Math.sin(seed + r * 11 + c * 17);
+      if (val > 0.35) {
         grid[r][c] = TileType.BRICK;
-        if (c + 1 < STAGE_COLS) grid[r][c + 1] = TileType.BRICK;
-      } else if (val < -0.65) {
+        if (c + 1 < cols - 2) grid[r][c + 1] = TileType.BRICK;
+      } else if (val < -0.68) {
         grid[r][c] = TileType.STEEL;
-      } else if (val > 0.25 && val <= 0.4) {
-        grid[r][c] = TileType.BUSH;
       }
     }
   }
 
-  const enemyPool: EnemyType[] = ['SCOUT', 'ASSAULT', 'HEAVY', 'ARTILLERY'];
-  const count = 10 + Math.min(25, wave * 3);
+  // Steel Bunkers & Pillboxes at strategic intersections
+  const bunkers = [
+    [7, 8], [7, 47], [20, 7], [20, 48],
+    [26, 20], [26, 35], [8, 27]
+  ];
+  for (const [br, bc] of bunkers) {
+    grid[br][bc] = TileType.STEEL;
+    grid[br][bc + 1] = TileType.STEEL;
+    grid[br + 1][bc] = TileType.STEEL;
+    grid[br + 1][bc + 1] = TileType.STEEL;
+  }
+
+  // 3. Dày đặc Bụi Cây (Dense Foliage / Bushes for ambush and cover)
+  // Four major quadrant forest thickets
+  for (let r = 6; r <= 14; r++) {
+    for (let c = 4; c <= 10; c++) {
+      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
+    }
+    for (let c = 45; c <= 51; c++) {
+      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
+    }
+  }
+  for (let r = 24; r <= 31; r++) {
+    for (let c = 4; c <= 11; c++) {
+      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
+    }
+    for (let c = 44; c <= 51; c++) {
+      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
+    }
+  }
+  // Scattered tactical bushes around center paths
+  for (let r = 17; r <= 23; r += 2) {
+    for (let c = 18; c <= 37; c += 3) {
+      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
+    }
+  }
+
+  // 4. Số lượng lớn xe tăng địch: 30-45 xe tăng mỗi đợt!
+  const count = 30 + Math.min(25, (wave - 1) * 6);
   const enemies: EnemyType[] = [];
 
   for (let i = 0; i < count; i++) {
-    if (wave >= 3 && i === count - 1 && wave % 2 === 0) {
+    // Titan boss each wave
+    if (i === count - 1 || (wave >= 2 && i === Math.floor(count / 2))) {
       enemies.push('BOSS');
     } else {
       const weight = Math.random();
-      if (weight < 0.25) enemies.push('SCOUT');
-      else if (weight < 0.55) enemies.push('ASSAULT');
-      else if (weight < 0.85) enemies.push('HEAVY');
+      if (weight < 0.22) enemies.push('SCOUT');
+      else if (weight < 0.50) enemies.push('ASSAULT');
+      else if (weight < 0.80) enemies.push('HEAVY');
       else enemies.push('ARTILLERY');
     }
   }
 
   return {
-    id: wave,
-    name: `Đợt Sinh Tồn ${wave}`,
-    description: `Đợt quân địch thứ ${wave}. Số lượng: ${count} chiến xa hung hãn không ngừng tràn tới.`,
+    id: stageId,
+    name: `Sinh Tồn Chiến Trường - Đợt ${wave}`,
+    description: `Bản đồ khổng lồ 56x40. 1 chiến xa đối đầu ${count} cỗ máy địch hung hãn! Bản đồ mở rộng khi di chuyển đến khung.`,
     grid,
     enemies,
-    maxActiveEnemies: Math.min(7, 4 + Math.floor(wave / 2)),
+    maxActiveEnemies: 8, // 8 active enemies hunting simultaneously
   };
 }
 

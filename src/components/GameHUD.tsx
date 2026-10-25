@@ -6,7 +6,6 @@ import {
   ArrowUpCircle,
   Castle,
   Skull,
-  BookOpen,
 } from 'lucide-react';
 import { GameStats, PlayerCombatStats } from '../types/game';
 
@@ -16,7 +15,6 @@ interface GameHUDProps {
   isPaused: boolean;
   onTogglePause: () => void;
   onUpgradeBase: () => void;
-  onOpenGuide?: () => void;
 }
 
 export function GameHUD({
@@ -25,7 +23,6 @@ export function GameHUD({
   isPaused,
   onTogglePause,
   onUpgradeBase,
-  onOpenGuide,
 }: GameHUDProps) {
   return (
     <header className="w-full bg-slate-900/95 border-b border-slate-800 text-[11px] select-none shrink-0 shadow-md">
@@ -106,12 +103,14 @@ export function GameHUD({
         {/* Vạch ngăn cách */}
         <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
 
-        {/* 5. LEVEL */}
+        {/* 5. LEVEL / ĐỢT */}
         <div
           className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 shadow-inner shrink-0"
-          title={`Cấp độ màn chơi: Level ${stats.stage}`}
+          title={stats.gameMode === 'SURVIVAL' ? `Đợt sinh tồn: Đợt ${stats.stage}` : `Cấp độ màn chơi: Level ${stats.stage}`}
         >
-          <span className="text-[10px] font-black text-emerald-400 tracking-wider">LEVEL</span>
+          <span className="text-[10px] font-black text-emerald-400 tracking-wider">
+            {stats.gameMode === 'SURVIVAL' ? 'ĐỢT' : 'LEVEL'}
+          </span>
           <span className="text-white font-mono font-black text-xs">{stats.stage}</span>
         </div>
 
@@ -139,22 +138,10 @@ export function GameHUD({
         {/* Vạch ngăn cách */}
         <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
 
-        {/* 8. Sổ tay */}
-        {onOpenGuide && (
-          <button
-            onClick={onOpenGuide}
-            title="Mở sổ tay tra cứu vũ khí & biểu tượng (Phím H)"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 border border-slate-700 transition-all cursor-pointer shadow-sm shrink-0"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">SỔ TAY</span>
-          </button>
-        )}
-
-        {/* 9. Tạm dừng / Tiếp tục */}
+        {/* 8. Tạm dừng / Tiếp tục */}
         <button
           onClick={onTogglePause}
-          title={isPaused ? 'Tiếp tục trận đấu (Phím P hoặc Esc)' : 'Tạm dừng trận đấu & Cài đặt (Phím P hoặc Esc)'}
+          title={isPaused ? 'Tiếp tục trận đấu (Phím P hoặc Esc)' : 'Tạm dừng trận đấu & Cài đặt / Sổ tay (Phím P hoặc Esc)'}
           className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide transition-all cursor-pointer shadow-sm border shrink-0 ${
             isPaused
               ? 'bg-emerald-500 text-slate-950 border-emerald-400 hover:bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
@@ -205,7 +192,7 @@ export function GameFooter({ highScore, combatStats }: GameFooterProps) {
         )}
 
         <div className="flex items-center gap-2 border-slate-700 sm:border-l sm:pl-3">
-          <span>WASD: Lái · Space: Bắn · <b>U: Nâng Cấp</b> · <b>H: Sổ Tay</b> · <b>P: Tạm Dừng</b></span>
+          <span>WASD: Lái · Space: Bắn · <b>U: Nâng Cấp Căn Cứ</b> · <b>P: Tạm Dừng / Sổ Tay</b></span>
           <span>·</span>
           <span>
             Kỷ lục: <b className="text-amber-300 font-mono">{highScore.toLocaleString()}</b>

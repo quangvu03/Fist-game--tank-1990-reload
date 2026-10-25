@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { GameMode, ControlMode } from '../types/game';
-import { Volume2, VolumeX, Play, Shield, Zap, Skull, Crosshair, Compass, Award, BookOpen } from 'lucide-react';
+import { Volume2, VolumeX, Play, Shield, Skull, Crosshair, Compass, Award, BookOpen } from 'lucide-react';
 import heroImage from '../assets/images/tank_battle_hero_1792246756619.jpg';
 
 interface TitleScreenProps {
@@ -155,81 +155,99 @@ export function TitleScreen({
           Chỉ huy chiến xa bọc thép, phối hợp chiến thuật hỏa lực, bảo vệ sở chỉ huy và tiêu diệt các toán quân AI hung hãn.
         </p>
 
-        {/* Game Mode Selector */}
-        <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {/* Game Mode Selector - 3 Chế Độ Riêng Biệt: Chiến Dịch, Sinh Tồn Mở Rộng, Đấu Trường Trùm */}
+        <div className="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          {/* Chế độ 1: Chiến Dịch */}
           <button
             onClick={() => {
               setSelectedMode('CAMPAIGN');
               setShowStageSelector(true);
             }}
-            className={`p-3 rounded-lg border text-left transition-all ${
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
               selectedMode === 'CAMPAIGN'
-                ? 'bg-emerald-950/60 border-emerald-500/80 text-white shadow-lg shadow-emerald-950/50'
+                ? 'bg-gradient-to-br from-emerald-950/90 to-slate-900/90 border-emerald-500 text-white shadow-lg shadow-emerald-950/50 ring-1 ring-emerald-500/50'
                 : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1.5">
               <Shield className={`w-4 h-4 ${selectedMode === 'CAMPAIGN' ? 'text-emerald-400' : 'text-slate-400'}`} />
-              <span className="font-bold text-xs uppercase tracking-wide">Chiến Dịch</span>
+              <span className="font-bold text-xs uppercase tracking-wide text-white">
+                Chiến Dịch
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 ml-auto">
+                10 LEVEL
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400 line-clamp-2">
-              10 màn chơi chiến dịch từ ngoại ô tới Pháo đài Titan.
+            <p className="text-[11px] text-slate-300 line-clamp-3 leading-relaxed">
+              10 màn kinh điển độ khó tăng dần. Cho phép chọn level xuất kích từ 1 đến 10. Toàn thắng sau Level 10!
             </p>
           </button>
 
+          {/* Chế độ 2: Sinh Tồn Mở Rộng (Map Lớn 56x40) */}
           <button
             onClick={() => {
               setSelectedMode('SURVIVAL');
               setShowStageSelector(false);
             }}
-            className={`p-3 rounded-lg border text-left transition-all ${
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
               selectedMode === 'SURVIVAL'
-                ? 'bg-amber-950/60 border-amber-500/80 text-white shadow-lg shadow-amber-950/50'
+                ? 'bg-gradient-to-br from-amber-950/90 to-slate-900/90 border-amber-500 text-white shadow-lg shadow-amber-950/50 ring-1 ring-amber-500/50'
                 : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className={`w-4 h-4 ${selectedMode === 'SURVIVAL' ? 'text-amber-400' : 'text-slate-400'}`} />
-              <span className="font-bold text-xs uppercase tracking-wide">Sinh Tồn</span>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Compass className={`w-4 h-4 ${selectedMode === 'SURVIVAL' ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span className="font-bold text-xs uppercase tracking-wide text-white">
+                Sinh Tồn Mở Rộng
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 ml-auto">
+                MAP 56x40
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400 line-clamp-2">
-              Các đợt địch bất tận với độ khó tăng dần và vật phẩm dồi dào.
+            <p className="text-[11px] text-slate-300 line-clamp-3 leading-relaxed">
+              1 vs 30-50 xe tăng địch! Map siêu rộng dày đặc tường, thùng, cây rậm, ô nước. Mở rộng khung khi di chuyển tới viền.
             </p>
           </button>
 
+          {/* Chế độ 3: Đấu Trường Trùm */}
           <button
             onClick={() => {
               setSelectedMode('BOSS_RUSH');
               setShowStageSelector(false);
             }}
-            className={`p-3 rounded-lg border text-left transition-all ${
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
               selectedMode === 'BOSS_RUSH'
-                ? 'bg-rose-950/60 border-rose-500/80 text-white shadow-lg shadow-rose-950/50'
+                ? 'bg-gradient-to-br from-rose-950/90 to-slate-900/90 border-rose-500 text-white shadow-lg shadow-rose-950/50 ring-1 ring-rose-500/50'
                 : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1.5">
               <Skull className={`w-4 h-4 ${selectedMode === 'BOSS_RUSH' ? 'text-rose-400' : 'text-slate-400'}`} />
-              <span className="font-bold text-xs uppercase tracking-wide">Trùm Titan</span>
+              <span className="font-bold text-xs uppercase tracking-wide text-white">
+                Đấu Trường Trùm
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 ml-auto">
+                THÁCH THỨC
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400 line-clamp-2">
-              Đối đầu trực diện với 3 cỗ máy Titan bọc giáp hủy diệt.
+            <p className="text-[11px] text-slate-300 line-clamp-3 leading-relaxed">
+              Đối đầu trực diện liên tiếp 3 Trùm Titan bọc giáp hủy diệt cùng toán hộ vệ tinh nhuệ.
             </p>
           </button>
         </div>
 
         {/* Stage Selector for Campaign */}
-        {selectedMode === 'CAMPAIGN' && showStageSelector && (
-          <div className="flex items-center gap-2 mb-6 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-lg text-xs">
-            <span className="text-slate-400 font-semibold">Chọn level bắt đầu:</span>
+        {selectedMode === 'CAMPAIGN' && (
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-5 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-lg text-xs shadow-inner">
+            <span className="text-slate-300 font-semibold">Chọn level xuất kích:</span>
             <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                 <button
                   key={num}
                   onClick={() => setStageSelect(num)}
-                  className={`w-6 h-6 rounded font-mono font-bold transition-colors ${
+                  className={`w-6 h-6 rounded font-mono font-bold transition-all cursor-pointer ${
                     stageSelect === num
-                      ? 'bg-emerald-500 text-slate-950 shadow'
+                      ? 'bg-emerald-500 text-slate-950 shadow-md scale-110 font-black'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
@@ -237,6 +255,17 @@ export function TitleScreen({
                 </button>
               ))}
             </div>
+            <span className="text-[10px] text-emerald-400/90 ml-1 font-mono">
+              (Level 10 kết thúc toàn thắng)
+            </span>
+          </div>
+        )}
+
+        {/* Feature badge for Survival */}
+        {selectedMode === 'SURVIVAL' && (
+          <div className="flex items-center justify-center gap-2 mb-5 bg-amber-950/40 border border-amber-500/40 px-4 py-2 rounded-lg text-xs shadow-inner text-amber-200">
+            <span className="font-mono text-amber-400 font-bold">🗺️ CHIẾN TRƯỜNG 56x40:</span>
+            <span className="text-[11px]">Camera bám sát xe tăng · Radar chiến thuật góc phải · Tiến tới khung để mở rộng</span>
           </div>
         )}
 

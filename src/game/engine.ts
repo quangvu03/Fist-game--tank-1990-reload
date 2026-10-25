@@ -143,7 +143,7 @@ export class GameEngine {
   public canvasHeight: number = CANVAS_HEIGHT;
   public baseCenter = BASE_CENTER;
   public scale: number = 1.0;
-  public zoom: number = 1.15; // Mặc định phóng to 115% giúp map rộng và to hơn, vừa mắt trên màn hình rộng
+  public zoom: number = 1.0; // Tỉ lệ chuẩn 100% trọn vẹn toàn bộ bản đồ
   public cameraX: number = CANVAS_WIDTH / 2;
   public cameraY: number = CANVAS_HEIGHT / 2;
   public originX: number = 0;
@@ -183,17 +183,7 @@ export class GameEngine {
     if (!context) throw new Error('Could not get 2D canvas context');
     this.ctx = context;
 
-    // Load saved zoom preference (default: 1.15x for a wide, impressive map view)
-    try {
-      const savedZoom = localStorage.getItem('tank_game_zoom');
-      if (savedZoom) {
-        const parsed = parseFloat(savedZoom);
-        if (parsed >= 1.0 && parsed <= 1.4) this.zoom = parsed;
-      }
-    } catch {
-      // Ignore
-    }
-
+    this.zoom = 1.0;
     this.updateViewportSize();
 
     this.currentStageConfig = stageConfig;
@@ -228,31 +218,21 @@ export class GameEngine {
     this.resetStage(stageConfig, true, initialProgression?.playerTier);
   }
 
-  public setZoom(zoom: number) {
-    this.zoom = Math.max(1.0, Math.min(1.4, zoom));
-    try {
-      localStorage.setItem('tank_game_zoom', this.zoom.toString());
-    } catch {
-      // Ignore
-    }
+  public setZoom(_zoom: number) {
+    this.zoom = 1.0;
     this.syncStats();
   }
 
   public getZoom(): number {
-    return this.zoom;
+    return 1.0;
   }
 
   public cycleZoom(): number {
-    // Cycles: 1.0 (100% Chuẩn) -> 1.15 (115% Lớn) -> 1.30 (130% Cực Đại) -> 1.0
-    const nextZoom = this.zoom < 1.08 ? 1.15 : this.zoom < 1.25 ? 1.3 : 1.0;
-    this.setZoom(nextZoom);
-    const label = nextZoom === 1.0 ? '100% (CHUẨN)' : nextZoom === 1.15 ? '115% (LỚN)' : '130% (CỰC ĐẠI)';
-    this.addFloatText(this.cameraX, this.cameraY - 40, `TỈ LỆ BẢN ĐỒ: ${label}`, '#38bdf8');
-    soundEngine.playPowerUp();
-    return nextZoom;
+    this.zoom = 1.0;
+    return 1.0;
   }
 
-  public updateViewportSize(dt: number = 0.016) {
+  public updateViewportSize(_dt: number = 0.016) {
     const clientW = this.canvas.clientWidth || this.canvasWidth;
     const clientH = this.canvas.clientHeight || this.canvasHeight;
     if (this.canvas.width !== clientW || this.canvas.height !== clientH) {
@@ -262,48 +242,18 @@ export class GameEngine {
     this.viewportWidth = clientW;
     this.viewportHeight = clientH;
 
-    // Base scale preserves 1:1 square pixel aspect ratio and fits battlefield into viewport
+    // Fixed 100% scale preserving 1:1 square pixel aspect ratio and fitting battlefield into viewport
     const scaleX = clientW / this.canvasWidth;
     const scaleY = clientH / this.canvasHeight;
-    const baseScale = Math.min(scaleX, scaleY);
-    this.scale = baseScale * this.zoom;
+    this.scale = Math.min(scaleX, scaleY);
+    this.zoom = 1.0;
 
     const scaledW = this.canvasWidth * this.scale;
     const scaledH = this.canvasHeight * this.scale;
 
-    // Target camera focus (centers on player or base when zoomed in)
-    let targetX = this.canvasWidth / 2;
-    let targetY = this.canvasHeight / 2;
-
-    if (this.zoom > 1.0 && this.player && this.player.hp > 0 && !this.isPlayerDying) {
-      targetX = this.player.x + this.player.width / 2;
-      targetY = this.player.y + this.player.height / 2;
-    } else if (this.zoom > 1.0) {
-      targetX = BASE_CENTER.x;
-      targetY = BASE_CENTER.y;
-    }
-
-    const lerpSpeed = Math.min(1.0, dt * 6.0);
-    this.cameraX += (targetX - this.cameraX) * lerpSpeed;
-    this.cameraY += (targetY - this.cameraY) * lerpSpeed;
-
-    // Horizontal origin calculation
-    if (scaledW <= clientW) {
-      this.originX = Math.round((clientW - scaledW) / 2);
-    } else {
-      const halfW = (clientW / this.scale) / 2;
-      this.cameraX = Math.max(halfW, Math.min(this.canvasWidth - halfW, this.cameraX));
-      this.originX = Math.round(clientW / 2 - this.cameraX * this.scale);
-    }
-
-    // Vertical origin calculation
-    if (scaledH <= clientH) {
-      this.originY = Math.round((clientH - scaledH) / 2);
-    } else {
-      const halfH = (clientH / this.scale) / 2;
-      this.cameraY = Math.max(halfH, Math.min(this.canvasHeight - halfH, this.cameraY));
-      this.originY = Math.round(clientH / 2 - this.cameraY * this.scale);
-    }
+    // Perfectly center arena on screen
+    this.originX = Math.round((clientW - scaledW) / 2);
+    this.originY = Math.round((clientH - scaledH) / 2);
 
     weatherSystem.setBounds(clientW, clientH);
   }
@@ -522,12 +472,6 @@ export class GameEngine {
     if (e.code === 'KeyU') {
       e.preventDefault();
       this.upgradeBase();
-    }
-
-    // Toggle zoom ratio hotkey 'Z'
-    if (e.code === 'KeyZ') {
-      e.preventDefault();
-      this.cycleZoom();
     }
   };
 

@@ -18,7 +18,6 @@ import {
   Gauge,
   Flame,
   Sparkles,
-  Maximize2,
 } from 'lucide-react';
 
 interface GameGuideModalProps {
@@ -726,10 +725,6 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                     <span className="text-slate-300">Mở sổ tay tác chiến</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-cyan-300 font-bold">Z</kbd>
-                    <span className="text-slate-300">Phóng to tỉ lệ map (100% · 115% · 130%)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-white font-bold">P / Esc</kbd>
                     <span className="text-slate-300">Tạm dừng trận đấu</span>
                   </div>
@@ -739,10 +734,6 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2 min-w-0">
                 <h4 className="font-bold text-white text-xs">CÁC NÚT CHỨC NĂNG TRÊN THANH CÔNG CỤ</h4>
                 <div className="space-y-2 text-[11px] text-slate-300">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-300 shrink-0"><Maximize2 className="w-3.5 h-3.5" /></div>
-                    <span className="break-words"><b>Tỉ Lệ Map (%):</b> Nhấp để phóng to bản đồ (100% Chuẩn → 115% Lớn → 130% Cực đại), chiến xa to rõ, chiến trường hoành tráng.</span>
-                  </div>
                   <div className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-slate-800 text-amber-300 shrink-0"><Sun className="w-3.5 h-3.5" /></div>
                     <span className="break-words"><b>Nút Thời Tiết:</b> Chuyển đổi giữa <i>Quang đãng</i> → <i>Mưa nhẹ</i> → <i>Tuyết rơi</i>.</span>

@@ -179,7 +179,7 @@ function makeStage4(): StageConfig {
   addBaseAndFortress(grid, 4);
 
   // Water river cutting horizontally with 2 bridges
-  for (let c = 0; c < GRID_COLS; c++) {
+  for (let c = 0; c < STAGE_COLS; c++) {
     if ((c >= 5 && c <= 7) || (c >= 18 && c <= 20)) {
       grid[11][c] = TileType.ICE;
       grid[12][c] = TileType.ICE;

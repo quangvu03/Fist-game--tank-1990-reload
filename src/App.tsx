@@ -355,40 +355,32 @@ export default function App() {
     engineRef.current?.toggleWeather();
   }, []);
 
-  const handleCycleZoom = useCallback(() => {
-    engineRef.current?.cycleZoom();
-  }, []);
-
-  const handleSetZoom = useCallback((zoom: number) => {
-    engineRef.current?.setZoom(zoom);
-  }, []);
-
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none font-sans p-0 m-0">
-      {/* 1. Màn chơi chính: CHỈ CÓ 2 THANH TRẠNG THÁI TRÊN VÀ DƯỚI, MAP SÁT VIỀN 100% */}
+      {/* 1. Màn chơi chính: THANH TRÊN VÀ DƯỚI ĐỀU CĂN GIỮA, MAP SÁT VIỀN 100% */}
       <div
         className={`relative z-10 flex flex-col w-full h-full overflow-hidden transition-opacity duration-200 ${
           gameStatus === 'TITLE' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
         }`}
       >
-        {/* THANH TRẠNG THÁI PHÍA TRÊN (GameHUD) - Sát mép 100% bề ngang */}
+        {/* THANH TRẠNG THÁI TRÊN (CĂN GIỮA): MẠNG, CĂN CỨ, NÂNG CẤP, LEVEL, ĐỊCH, ĐIỂM, TẠM DỪNG */}
         <GameHUD
           stats={stats}
           remainingEnemies={remainingEnemies}
           isPaused={gameStatus === 'PAUSED'}
           onTogglePause={handleTogglePause}
           onUpgradeBase={handleUpgradeBase}
-          onCycleZoom={handleCycleZoom}
+          onOpenGuide={handleOpenGuide}
         />
 
-        {/* MAP CỦA GAME: SÁT VIỀN 100% TRÁI VÀ PHẢI, HOÀN TOÀN KHÔNG CÓ KHOẢNG ĐEN */}
+        {/* MAP CỦA GAME: SÁT VIỀN 100%, ĐỘ CAO VÀ RỘNG TỐI ĐA TRÊN MÀN HÌNH */}
         <div className="relative flex-1 w-full min-h-0 flex items-stretch justify-stretch overflow-hidden bg-slate-950">
           <canvas
             ref={canvasRef}
             className="w-full h-full block cursor-crosshair select-none [image-rendering:pixelated]"
           />
 
-          {/* Phím ảo điều khiển cảm ứng cho di động/máy tính bảng (hiển thị mờ nổi bên trên map) */}
+          {/* Phím ảo điều khiển cảm ứng cho di động/máy tính bảng */}
           <div className="md:hidden absolute bottom-2 left-2 right-2 pointer-events-none z-20 flex justify-between">
             <TouchControls
               onDirectionInput={handleVirtualDirection}
@@ -397,7 +389,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* THANH TRẠNG THÁI PHÍA DƯỚI (GameFooter) - Sát mép 100% bề ngang */}
+        {/* THANH TRẠNG THÁI DƯỚI (CĂN GIỮA): TỐC ĐỘ, HỎA LỰC, PHÍM TẮT & KỶ LỤC */}
         <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
 
         {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh, Điều khiển) */}
@@ -414,8 +406,6 @@ export default function App() {
             weather={stats.weather}
             isWeatherEnabled={stats.isWeatherEnabled}
             onToggleWeather={handleToggleWeather}
-            zoom={stats.zoom || 1.15}
-            onSetZoom={handleSetZoom}
           />
         )}
 

@@ -10,7 +10,6 @@ import {
   Sun,
   CloudRain,
   Snowflake,
-  Maximize2,
 } from 'lucide-react';
 import { ControlMode, WeatherType } from '../types/game';
 
@@ -26,8 +25,6 @@ interface PauseModalProps {
   weather?: WeatherType;
   isWeatherEnabled?: boolean;
   onToggleWeather?: () => void;
-  zoom?: number;
-  onSetZoom?: (zoom: number) => void;
 }
 
 export function PauseModal({
@@ -42,8 +39,6 @@ export function PauseModal({
   weather = 'CLEAR',
   isWeatherEnabled = false,
   onToggleWeather,
-  zoom = 1.15,
-  onSetZoom,
 }: PauseModalProps) {
   const isWeatherActive = isWeatherEnabled && weather !== 'CLEAR';
 
@@ -176,38 +171,6 @@ export function PauseModal({
               )}
             </button>
           </div>
-
-          {/* Tỉ lệ phóng to bản đồ (Map Scale / Zoom) */}
-          {onSetZoom && (
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-slate-300 text-xs flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
-                Tỉ lệ map (Phím Z):
-              </span>
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                {[
-                  { val: 1.0, label: '100%' },
-                  { val: 1.15, label: '115%' },
-                  { val: 1.3, label: '130%' },
-                ].map((opt) => {
-                  const isActive = Math.abs(zoom - opt.val) < 0.05;
-                  return (
-                    <button
-                      key={opt.val}
-                      onClick={() => onSetZoom(opt.val)}
-                      className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-850'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

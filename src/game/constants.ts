@@ -8,13 +8,7 @@ export const CANVAS_WIDTH = GRID_COLS * TILE_SIZE; // 884px
 export const CANVAS_HEIGHT = GRID_ROWS * TILE_SIZE; // 676px
 export const CANVAS_SIZE = CANVAS_HEIGHT; // 676px backwards compatibility
 
-// Massive Open Warzone for Survival Mode (56 cols x 40 rows = 1456px x 1040px)
-export const SURVIVAL_COLS = 56;
-export const SURVIVAL_ROWS = 40;
-export const SURVIVAL_WIDTH = SURVIVAL_COLS * TILE_SIZE; // 1456px
-export const SURVIVAL_HEIGHT = SURVIVAL_ROWS * TILE_SIZE; // 1040px
-export const SURVIVAL_BASE_COORD = { col: 27, row: 36 };
-export const SURVIVAL_BASE_CENTER = { x: 28 * TILE_SIZE, y: 36.8 * TILE_SIZE };
+
 
 export const TANK_SIZE = 26;
 export const BULLET_RADIUS = 3.5;

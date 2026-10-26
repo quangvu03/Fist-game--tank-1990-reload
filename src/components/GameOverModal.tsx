@@ -39,7 +39,9 @@ export function GameOverModal({
             {isVictory
               ? (stats.gameMode === 'CAMPAIGN' ? 'TOÀN THẮNG CHIẾN DỊCH!' : 'CHIẾN THẮNG VANG DỘI!')
               : isStageClear
-              ? (stats.gameMode === 'SURVIVAL' ? `SỐNG SÓT ĐỢT ${stats.stage}!` : `VƯỢT QUA LEVEL ${stats.stage}!`)
+              ? (stats.gameMode === 'SURVIVAL' ? `CHIẾN THẮNG ĐỢT ${stats.stage}!` : `VƯỢT QUA LEVEL ${stats.stage}!`)
+              : stats.gameMode === 'SURVIVAL'
+              ? 'XE TĂNG BỊ PHÁ HỦY!'
               : stats.baseHp <= 0
               ? 'SỞ CHỈ HUY BỊ HỦY DIỆT!'
               : 'XE TĂNG BỊ PHÁ HỦY!'}
@@ -48,7 +50,7 @@ export function GameOverModal({
           <p className="text-xs text-slate-400 mt-1">
             {isWon
               ? (stats.gameMode === 'SURVIVAL'
-                  ? `Bạn đã phòng ngự kiên cường và quét sạch toàn bộ quân đoàn địch Đợt ${stats.stage}.`
+                  ? `Bạn đã tiêu diệt toàn bộ số xe tăng địch trên chiến trường mở rộng Đợt ${stats.stage}!`
                   : 'Bạn đã quét sạch toàn bộ lực lượng thiết giáp địch trên chiến trường.')
               : 'Lực lượng của bạn đã cạn kiệt. Hãy tái tập hợp và phản công!'}
           </p>
@@ -99,19 +101,21 @@ export function GameOverModal({
           </div>
         </div>
 
-        {/* Next Stage Base Upgrade Banner */}
+        {/* Next Stage Base Upgrade / Survival Reinforcement Banner */}
         {isStageClear && hasNextStage && (
           <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2.5 mb-5 text-xs text-emerald-300 flex items-center justify-between">
             <span className="font-semibold flex items-center gap-1.5">
-              <span>🏰</span>
+              <span>{stats.gameMode === 'SURVIVAL' ? '⚔️' : '🏰'}</span>
               <span>
                 {stats.gameMode === 'SURVIVAL'
-                  ? `CHIẾN TRƯỜNG MỞ RỘNG (ĐỢT ${stats.stage + 1}):`
+                  ? `CHIẾN TRƯỜNG ĐỢT ${stats.stage + 1}:`
                   : `LỚP BẢO VỆ CĂN CỨ LEVEL ${stats.stage + 1}:`}
               </span>
             </span>
             <span className="font-bold text-amber-300 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-700">
-              {stats.stage + 1 >= 9
+              {stats.gameMode === 'SURVIVAL'
+                ? `MỞ RỘNG QUÂN ĐOÀN (${32 + stats.stage * 6} XE ĐỊCH)`
+                : stats.stage + 1 >= 9
                 ? 'LƯỢNG TỬ (CẤP 5)'
                 : stats.stage + 1 >= 7
                 ? 'TITANIUM (CẤP 4)'

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { GameMode, ControlMode } from '../types/game';
-import { Volume2, VolumeX, Play, Shield, Skull, Crosshair, Compass, Award, BookOpen } from 'lucide-react';
+import { Volume2, VolumeX, Play, Shield, Skull, Compass, Award, BookOpen } from 'lucide-react';
 import heroImage from '../assets/images/tank_battle_hero_1792246756619.jpg';
 
 interface TitleScreenProps {
@@ -19,7 +19,6 @@ export function TitleScreen({
   onOpenGuide,
 }: TitleScreenProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode>('CAMPAIGN');
-  const [controlMode, setControlMode] = useState<ControlMode>('CLASSIC');
   const [stageSelect, setStageSelect] = useState<number>(1);
   const [showStageSelector, setShowStageSelector] = useState(false);
 
@@ -28,12 +27,12 @@ export function TitleScreen({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Enter' || e.code === 'Space') {
         e.preventDefault();
-        onStartGame(selectedMode, controlMode, stageSelect);
+        onStartGame(selectedMode, 'CLASSIC', stageSelect);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onStartGame, selectedMode, controlMode, stageSelect]);
+  }, [onStartGame, selectedMode, stageSelect]);
 
   return (
     <div className="relative w-full h-full min-h-screen bg-slate-950 text-white flex flex-col justify-between overflow-hidden select-none">
@@ -183,7 +182,7 @@ export function TitleScreen({
             </p>
           </button>
 
-          {/* Chế độ 2: Sinh Tồn Mở Rộng (Map Lớn 56x40) */}
+          {/* Chế độ 2: Sinh Tồn Mở Rộng */}
           <button
             onClick={() => {
               setSelectedMode('SURVIVAL');
@@ -201,11 +200,11 @@ export function TitleScreen({
                 Sinh Tồn Mở Rộng
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 ml-auto">
-                MAP 56x40
+                MỞ RỘNG MAP
               </span>
             </div>
             <p className="text-[11px] text-slate-300 line-clamp-3 leading-relaxed">
-              1 vs 30-50 xe tăng địch! Map siêu rộng dày đặc tường, thùng, cây rậm, ô nước. Mở rộng khung khi di chuyển tới viền.
+              Chiến trường rộng lớn mở rộng khi đến gần viền, không có căn cứ chủ. Có radar quân sự, tiêu diệt toàn bộ xe tăng địch để thắng!
             </p>
           </button>
 
@@ -238,7 +237,7 @@ export function TitleScreen({
 
         {/* Stage Selector for Campaign */}
         {selectedMode === 'CAMPAIGN' && (
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-5 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-lg text-xs shadow-inner">
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-6 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-lg text-xs shadow-inner">
             <span className="text-slate-300 font-semibold">Chọn level xuất kích:</span>
             <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -261,41 +260,10 @@ export function TitleScreen({
           </div>
         )}
 
-        {/* Feature badge for Survival */}
-        {selectedMode === 'SURVIVAL' && (
-          <div className="flex items-center justify-center gap-2 mb-5 bg-amber-950/40 border border-amber-500/40 px-4 py-2 rounded-lg text-xs shadow-inner text-amber-200">
-            <span className="font-mono text-amber-400 font-bold">🗺️ CHIẾN TRƯỜNG 56x40:</span>
-            <span className="text-[11px]">Camera bám sát xe tăng · Radar chiến thuật góc phải · Tiến tới khung để mở rộng</span>
-          </div>
-        )}
-
-        {/* Control Mode Toggle */}
-        <div className="flex items-center gap-3 mb-8 bg-slate-900/80 border border-slate-800 p-1.5 rounded-lg text-xs">
-          <span className="text-slate-400 pl-2">Kiểu điều khiển:</span>
-          <button
-            onClick={() => setControlMode('CLASSIC')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-medium transition-all ${
-              controlMode === 'CLASSIC' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Cổ Điển (4 Hướng)</span>
-          </button>
-          <button
-            onClick={() => setControlMode('MOUSE_AIM')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-medium transition-all ${
-              controlMode === 'MOUSE_AIM' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Crosshair className="w-3.5 h-3.5" />
-            <span>Hiện Đại (Chuột 360°)</span>
-          </button>
-        </div>
-
         {/* Primary Start CTA Button */}
         <button
-          onClick={() => onStartGame(selectedMode, controlMode, stageSelect)}
-          className="group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 text-sm font-bold tracking-wider text-slate-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 rounded-lg shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          onClick={() => onStartGame(selectedMode, 'CLASSIC', stageSelect)}
+          className="group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 text-sm font-bold tracking-wider text-slate-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 rounded-lg shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer mb-2"
         >
           <Play className="w-4 h-4 fill-current" />
           <span>VÀO TRẬN CHIẾN (ENTER / SPACE)</span>

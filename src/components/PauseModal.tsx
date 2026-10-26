@@ -5,13 +5,12 @@ import {
   Volume2,
   VolumeX,
   Compass,
-  Crosshair,
   BookOpen,
   Sun,
   CloudRain,
   Snowflake,
 } from 'lucide-react';
-import { ControlMode, WeatherType } from '../types/game';
+import { WeatherType } from '../types/game';
 
 interface PauseModalProps {
   onResume: () => void;
@@ -19,8 +18,6 @@ interface PauseModalProps {
   onQuitToTitle: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
-  controlMode: ControlMode;
-  onToggleControlMode: () => void;
   onOpenGuide: () => void;
   weather?: WeatherType;
   isWeatherEnabled?: boolean;
@@ -33,8 +30,6 @@ export function PauseModal({
   onQuitToTitle,
   isMuted,
   onToggleMute,
-  controlMode,
-  onToggleControlMode,
   onOpenGuide,
   weather = 'CLEAR',
   isWeatherEnabled = false,
@@ -154,22 +149,10 @@ export function PauseModal({
           {/* Kiểu điều khiển */}
           <div className="flex items-center justify-between">
             <span className="text-slate-300 text-xs">Kiểu điều khiển:</span>
-            <button
-              onClick={onToggleControlMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
-            >
-              {controlMode === 'CLASSIC' ? (
-                <>
-                  <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>PHÍM 4 HƯỚNG</span>
-                </>
-              ) : (
-                <>
-                  <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>CHUỘT 360°</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs bg-slate-800 text-emerald-400 border border-slate-700">
+              <Compass className="w-3.5 h-3.5 text-emerald-400" />
+              <span>PHÍM 4 HƯỚNG</span>
+            </div>
           </div>
         </div>
       </div>

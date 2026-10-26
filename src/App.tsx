@@ -73,16 +73,7 @@ export default function App() {
     setIsMuted(next);
   }, []);
 
-  // Control mode toggle
-  const handleToggleControlMode = useCallback(() => {
-    setControlMode((prev) => {
-      const next = prev === 'CLASSIC' ? 'MOUSE_AIM' : 'CLASSIC';
-      if (engineRef.current) {
-        engineRef.current.setControlMode(next);
-      }
-      return next;
-    });
-  }, []);
+
 
   // Stage clear handler - Campaign completes at Level 10, Survival continues wave-by-wave
   const handleStageClear = useCallback(() => {
@@ -400,8 +391,6 @@ export default function App() {
             onQuitToTitle={handleQuitToTitle}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
-            controlMode={controlMode}
-            onToggleControlMode={handleToggleControlMode}
             onOpenGuide={handleOpenGuide}
             weather={stats.weather}
             isWeatherEnabled={stats.isWeatherEnabled}

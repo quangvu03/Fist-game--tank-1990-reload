@@ -6,6 +6,7 @@ import {
   ArrowUpCircle,
   Castle,
   Skull,
+  Crosshair,
 } from 'lucide-react';
 import { GameStats, PlayerCombatStats } from '../types/game';
 
@@ -24,6 +25,8 @@ export function GameHUD({
   onTogglePause,
   onUpgradeBase,
 }: GameHUDProps) {
+  const isSurvival = stats.gameMode === 'SURVIVAL';
+
   return (
     <header className="w-full bg-slate-900/95 border-b border-slate-800 text-[11px] select-none shrink-0 shadow-md">
       {/* THANH TRẠNG THÁI TRÊN: TOÀN BỘ CÁC THÔNG SỐ CĂN GIỮA ĐẸP MẮT */}
@@ -38,66 +41,81 @@ export function GameHUD({
           <span className="font-mono text-xs text-white font-black">{stats.lives}</span>
         </div>
 
-        {/* 2. Căn cứ chỉ huy */}
-        <div
-          className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 shadow-inner shrink-0"
-          title={`Sở chỉ huy Cấp ${stats.baseTier}: ${stats.baseTierName} (${stats.baseHp}/${stats.baseMaxHp} HP)`}
-        >
-          <Castle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span className="text-amber-300 font-bold text-[10px]">C{stats.baseTier}</span>
-          <span
-            className={`font-mono text-xs font-black ${
-              stats.baseHp <= 1
-                ? 'text-rose-400 animate-pulse'
-                : 'text-emerald-400'
-            }`}
-          >
-            {stats.baseHp > 0 ? `${stats.baseHp}/${stats.baseMaxHp}` : 'HỎNG'}
-          </span>
-        </div>
-
-        {/* 3. Màn chắn lực trường căn cứ */}
-        {stats.baseShieldMaxHp > 0 && (
+        {/* Chế độ Sinh Tồn: Không có Căn Cứ Chủ, Tiêu diệt toàn bộ địch */}
+        {isSurvival ? (
           <div
-            className="flex items-center gap-0.5 bg-slate-950 px-1.5 py-1 rounded-lg border border-cyan-900/70 shadow-inner shrink-0"
-            title={`Màn chắn căn cứ: ${stats.baseShieldHp}/${stats.baseShieldMaxHp} HP`}
+            className="flex items-center gap-1.5 bg-rose-950/60 border border-rose-500/50 px-2.5 py-1 rounded-lg shadow-inner shrink-0"
+            title="Chế độ Sinh Tồn: Bản đồ rộng lớn mở rộng khi đến gần viền, không có căn cứ. Tiêu diệt toàn bộ xe tăng địch để chiến thắng!"
           >
-            <Shield className="w-3 h-3 text-cyan-400 fill-cyan-400/20 shrink-0" />
-            <span className="font-mono text-[10px] font-bold text-cyan-300">
-              {stats.baseShieldHp}
+            <Crosshair className="w-3.5 h-3.5 text-rose-400 shrink-0 animate-pulse" />
+            <span className="text-rose-300 font-black text-[9.5px] uppercase tracking-tight">
+              SINH TỒN: KHÔNG CĂN CỨ
             </span>
           </div>
-        )}
-
-        {/* 4. Nút Nâng cấp căn cứ */}
-        {stats.baseTier < 5 ? (
-          <button
-            onClick={onUpgradeBase}
-            title={`Nâng cấp căn cứ lên Cấp ${stats.baseTier + 1} & Phục hồi tường phòng thủ (Phím U)`}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg font-bold tracking-tight transition-all cursor-pointer shadow-sm shrink-0 ${
-              stats.canUpgradeBase
-                ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 font-black animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.6)]'
-                : 'bg-slate-800/90 text-slate-300 hover:text-white border border-slate-700'
-            }`}
-          >
-            <ArrowUpCircle
-              className={`w-3.5 h-3.5 shrink-0 ${stats.canUpgradeBase ? 'text-slate-950' : 'text-amber-400'}`}
-            />
-            <span className="font-black text-[9px] uppercase tracking-tight whitespace-nowrap">
-              NÂNG CẤP CĂN CỨ
-            </span>
-            <span
-              className={`font-mono text-[9px] px-1 py-0.2 rounded font-black ${
-                stats.canUpgradeBase ? 'bg-slate-950/20 text-slate-950' : 'text-amber-300 bg-slate-950/40'
-              }`}
-            >
-              {stats.baseUpgradeCost}đ
-            </span>
-          </button>
         ) : (
-          <span className="text-[9px] font-black text-cyan-300 px-2 py-1 rounded-lg bg-cyan-950/60 border border-cyan-800 shrink-0 tracking-tight uppercase">
-            CĂN CỨ TỐI ĐA
-          </span>
+          <>
+            {/* 2. Căn cứ chỉ huy */}
+            <div
+              className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 shadow-inner shrink-0"
+              title={`Sở chỉ huy Cấp ${stats.baseTier}: ${stats.baseTierName} (${stats.baseHp}/${stats.baseMaxHp} HP)`}
+            >
+              <Castle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="text-amber-300 font-bold text-[10px]">C{stats.baseTier}</span>
+              <span
+                className={`font-mono text-xs font-black ${
+                  stats.baseHp <= 1
+                    ? 'text-rose-400 animate-pulse'
+                    : 'text-emerald-400'
+                }`}
+              >
+                {stats.baseHp > 0 ? `${stats.baseHp}/${stats.baseMaxHp}` : 'HỎNG'}
+              </span>
+            </div>
+
+            {/* 3. Màn chắn lực trường căn cứ */}
+            {stats.baseShieldMaxHp > 0 && (
+              <div
+                className="flex items-center gap-0.5 bg-slate-950 px-1.5 py-1 rounded-lg border border-cyan-900/70 shadow-inner shrink-0"
+                title={`Màn chắn căn cứ: ${stats.baseShieldHp}/${stats.baseShieldMaxHp} HP`}
+              >
+                <Shield className="w-3 h-3 text-cyan-400 fill-cyan-400/20 shrink-0" />
+                <span className="font-mono text-[10px] font-bold text-cyan-300">
+                  {stats.baseShieldHp}
+                </span>
+              </div>
+            )}
+
+            {/* 4. Nút Nâng cấp căn cứ */}
+            {stats.baseTier < 5 ? (
+              <button
+                onClick={onUpgradeBase}
+                title={`Nâng cấp căn cứ lên Cấp ${stats.baseTier + 1} & Phục hồi tường phòng thủ (Phím U)`}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg font-bold tracking-tight transition-all cursor-pointer shadow-sm shrink-0 ${
+                  stats.canUpgradeBase
+                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 font-black animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.6)]'
+                    : 'bg-slate-800/90 text-slate-300 hover:text-white border border-slate-700'
+                }`}
+              >
+                <ArrowUpCircle
+                  className={`w-3.5 h-3.5 shrink-0 ${stats.canUpgradeBase ? 'text-slate-950' : 'text-amber-400'}`}
+                />
+                <span className="font-black text-[9px] uppercase tracking-tight whitespace-nowrap">
+                  NÂNG CẤP CĂN CỨ
+                </span>
+                <span
+                  className={`font-mono text-[9px] px-1 py-0.2 rounded font-black ${
+                    stats.canUpgradeBase ? 'bg-slate-950/20 text-slate-950' : 'text-amber-300 bg-slate-950/40'
+                  }`}
+                >
+                  {stats.baseUpgradeCost}đ
+                </span>
+              </button>
+            ) : (
+              <span className="text-[9px] font-black text-cyan-300 px-2 py-1 rounded-lg bg-cyan-950/60 border border-cyan-800 shrink-0 tracking-tight uppercase">
+                CĂN CỨ TỐI ĐA
+              </span>
+            )}
+          </>
         )}
 
         {/* Vạch ngăn cách */}

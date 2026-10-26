@@ -1,5 +1,5 @@
 import { StageConfig, EnemyType, TileType } from '../types/game';
-import { STAGE_COLS, GRID_ROWS, SURVIVAL_COLS, SURVIVAL_ROWS, SURVIVAL_BASE_COORD } from './constants';
+import { STAGE_COLS, GRID_COLS, GRID_ROWS, BASE_COORD } from './constants';
 
 // Helper to create an empty 26x26 core stage blueprint grid
 function createEmptyGrid(): number[][] {
@@ -446,147 +446,134 @@ export const CAMPAIGN_STAGES: StageConfig[] = [
   makeStage10(),
 ];
 
-// Generate Massive Open Warzone for Survival Mode (56 cols x 40 rows)
+// Generate Massive Strategic Warzone for Survival Mode (56 cols x 40 rows, expandable, NO BASE)
 export function generateSurvivalStage(wave: number, stageId: number = wave): StageConfig {
-  const rows = SURVIVAL_ROWS;
-  const cols = SURVIVAL_COLS;
+  const rows = 40; // Massive expanded height
+  const cols = 56; // Massive expanded width
   const grid: number[][] = [];
   for (let r = 0; r < rows; r++) {
     grid[r] = new Array(cols).fill(TileType.EMPTY);
   }
 
-  // Base at SURVIVAL_BASE_COORD (cols 27, 28, rows 36, 37)
-  const bCol = SURVIVAL_BASE_COORD.col;
-  const bRow = SURVIVAL_BASE_COORD.row;
-  grid[bRow][bCol] = TileType.BASE;
-  grid[bRow][bCol + 1] = TileType.BASE;
-  grid[bRow + 1][bCol] = TileType.BASE;
-  grid[bRow + 1][bCol + 1] = TileType.BASE;
+  // NOTE: IN SURVIVAL MODE, THERE IS NO HOME BASE!
+  // The player operates independently across the vast warzone and wins by destroying all enemy tanks!
 
-  // Base fortress walls (Concrete/Steel for survival)
-  const wallType = wave >= 3 ? TileType.STEEL : TileType.REINFORCED_WALL;
-  for (let c = bCol - 1; c <= bCol + 2; c++) {
-    grid[bRow - 1][c] = wallType;
-  }
-  grid[bRow][bCol - 1] = wallType;
-  grid[bRow + 1][bCol - 1] = wallType;
-  grid[bRow][bCol + 2] = wallType;
-  grid[bRow + 1][bCol + 2] = wallType;
-
-  // 1. Water Canals and Ponds (Ô nước & Kênh đào chiến lược)
-  // West Canal: col 14, rows 5..30
-  for (let r = 5; r <= 30; r++) {
-    // Ice bridge crossings at rows 11-12 and 22-23
-    if ((r >= 11 && r <= 12) || (r >= 22 && r <= 23)) {
-      grid[r][14] = TileType.ICE;
+  // 1. Water Canals and Ice Crossings (4 Tactical Canal Channels)
+  // West Canal 1: Col 12, rows 4..35
+  for (let r = 4; r <= 35; r++) {
+    if ((r >= 10 && r <= 12) || (r >= 22 && r <= 24)) {
+      grid[r][12] = TileType.ICE;
     } else {
-      grid[r][14] = TileType.WATER;
+      grid[r][12] = TileType.WATER;
     }
   }
 
-  // East Canal: col 41, rows 5..30
-  for (let r = 5; r <= 30; r++) {
-    if ((r >= 11 && r <= 12) || (r >= 22 && r <= 23)) {
-      grid[r][41] = TileType.ICE;
+  // East Canal 2: Col 43, rows 4..35
+  for (let r = 4; r <= 35; r++) {
+    if ((r >= 10 && r <= 12) || (r >= 22 && r <= 24)) {
+      grid[r][43] = TileType.ICE;
     } else {
-      grid[r][41] = TileType.WATER;
+      grid[r][43] = TileType.WATER;
     }
   }
 
-  // Center Northern Lake (Rows 12..15, Cols 24..31)
-  for (let r = 12; r <= 15; r++) {
-    for (let c = 24; c <= 31; c++) {
-      grid[r][c] = TileType.WATER;
-    }
-  }
-  // Ice causeway in middle of lake (col 27-28, row 13-14)
-  grid[13][27] = TileType.ICE;
-  grid[13][28] = TileType.ICE;
-  grid[14][27] = TileType.ICE;
-  grid[14][28] = TileType.ICE;
-
-  // 2. Dày đặc Tường & Thùng gỗ (Dense Bricks & Wooden Crates)
-  const seed = wave * 2026 + 77;
-  for (let r = 3; r < rows - 4; r += 2) {
-    for (let c = 2; c < cols - 2; c += 2) {
-      // Don't build over base area
-      if (c >= bCol - 2 && c <= bCol + 3 && r >= bRow - 3) continue;
-      // Don't build over canals
-      if (c === 14 || c === 41) continue;
-      // Don't build over central lake
-      if (c >= 23 && c <= 32 && r >= 11 && r <= 16) continue;
-
-      const val = Math.sin(seed + r * 11 + c * 17);
-      if (val > 0.35) {
-        grid[r][c] = TileType.BRICK;
-        if (c + 1 < cols - 2) grid[r][c + 1] = TileType.BRICK;
-      } else if (val < -0.68) {
-        grid[r][c] = TileType.STEEL;
-      }
+  // North-Center Water Barrier (Row 11, Cols 20..35)
+  for (let c = 20; c <= 35; c++) {
+    if (c === 27 || c === 28) {
+      grid[11][c] = TileType.ICE; // Ice bridge
+    } else {
+      grid[11][c] = TileType.WATER;
     }
   }
 
-  // Steel Bunkers & Pillboxes at strategic intersections
-  const bunkers = [
-    [7, 8], [7, 47], [20, 7], [20, 48],
-    [26, 20], [26, 35], [8, 27]
+  // South-Center Water Barrier (Row 28, Cols 20..35)
+  for (let c = 20; c <= 35; c++) {
+    if (c === 27 || c === 28) {
+      grid[28][c] = TileType.ICE;
+    } else {
+      grid[28][c] = TileType.WATER;
+    }
+  }
+
+  // 2. Tactical Fortified Bunkers & Pillboxes across sectors
+  const pillboxes = [
+    [6, 6], [6, 48], [32, 6], [32, 48],
+    [16, 6], [16, 48], [24, 6], [24, 48],
+    [6, 26], [32, 26], [19, 18], [19, 36],
   ];
-  for (const [br, bc] of bunkers) {
+  for (const [br, bc] of pillboxes) {
     grid[br][bc] = TileType.STEEL;
     grid[br][bc + 1] = TileType.STEEL;
     grid[br + 1][bc] = TileType.STEEL;
     grid[br + 1][bc + 1] = TileType.STEEL;
   }
 
-  // 3. Dày đặc Bụi Cây (Dense Foliage / Bushes for ambush and cover)
-  // Four major quadrant forest thickets
-  for (let r = 6; r <= 14; r++) {
-    for (let c = 4; c <= 10; c++) {
-      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
-    }
-    for (let c = 45; c <= 51; c++) {
-      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
-    }
-  }
-  for (let r = 24; r <= 31; r++) {
-    for (let c = 4; c <= 11; c++) {
-      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
-    }
-    for (let c = 44; c <= 51; c++) {
-      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
-    }
-  }
-  // Scattered tactical bushes around center paths
-  for (let r = 17; r <= 23; r += 2) {
-    for (let c = 18; c <= 37; c += 3) {
-      if (grid[r][c] === TileType.EMPTY) grid[r][c] = TileType.BUSH;
+  // 3. Dense Wooden Crate Depots & Brick Maze (Thùng gỗ quân sự tiếp tế)
+  const seed = wave * 3041 + 137;
+  for (let r = 3; r < rows - 3; r += 2) {
+    for (let c = 3; c < cols - 3; c += 2) {
+      // Keep canals clear
+      if (c === 12 || c === 43) continue;
+      // Keep water barriers clear
+      if ((r === 11 || r === 28) && c >= 19 && c <= 36) continue;
+      // Keep player center staging ground (cols 24..31, rows 17..22) completely clear
+      if (c >= 24 && c <= 31 && r >= 17 && r <= 22) continue;
+
+      const val = Math.sin(seed + r * 13 + c * 19);
+      if (val > 0.38) {
+        grid[r][c] = TileType.BRICK;
+        if (c + 1 < cols - 3 && c + 1 !== 12 && c + 1 !== 43) {
+          grid[r][c + 1] = TileType.BRICK;
+        }
+      } else if (val < -0.74) {
+        grid[r][c] = TileType.STEEL;
+      }
     }
   }
 
-  // 4. Số lượng lớn xe tăng địch: 30-45 xe tăng mỗi đợt!
-  const count = 30 + Math.min(25, (wave - 1) * 6);
+  // 4. Strategic Foliage / Bushes for tactical ambush
+  const bushSectors = [
+    { r1: 5, r2: 9, c1: 15, c2: 19 },
+    { r1: 5, r2: 9, c1: 36, c2: 40 },
+    { r1: 30, r2: 34, c1: 15, c2: 19 },
+    { r1: 30, r2: 34, c1: 36, c2: 40 },
+    { r1: 17, r2: 22, c1: 4, c2: 8 },
+    { r1: 17, r2: 22, c1: 47, c2: 51 },
+  ];
+  for (const b of bushSectors) {
+    for (let r = b.r1; r <= b.r2; r++) {
+      for (let c = b.c1; c <= b.c2; c++) {
+        if (grid[r][c] === TileType.EMPTY) {
+          grid[r][c] = TileType.BUSH;
+        }
+      }
+    }
+  }
+
+  // 5. Enemy Roster: Scale 32 to 50 tanks per wave
+  const count = 32 + Math.min(24, (wave - 1) * 6);
   const enemies: EnemyType[] = [];
 
   for (let i = 0; i < count; i++) {
-    // Titan boss each wave
+    // Titan boss each wave (middle and final enemy)
     if (i === count - 1 || (wave >= 2 && i === Math.floor(count / 2))) {
       enemies.push('BOSS');
     } else {
       const weight = Math.random();
-      if (weight < 0.22) enemies.push('SCOUT');
-      else if (weight < 0.50) enemies.push('ASSAULT');
-      else if (weight < 0.80) enemies.push('HEAVY');
+      if (weight < 0.25) enemies.push('SCOUT');
+      else if (weight < 0.55) enemies.push('ASSAULT');
+      else if (weight < 0.82) enemies.push('HEAVY');
       else enemies.push('ARTILLERY');
     }
   }
 
   return {
     id: stageId,
-    name: `Sinh Tồn Chiến Trường - Đợt ${wave}`,
-    description: `Bản đồ khổng lồ 56x40. 1 chiến xa đối đầu ${count} cỗ máy địch hung hãn! Bản đồ mở rộng khi di chuyển đến khung.`,
+    name: `Sinh Tồn Mở Rộng - Đợt ${wave}`,
+    description: `Chiến trường siêu rộng không có căn cứ chủ! Di chuyển đến gần viền để mở rộng map, tiêu diệt toàn bộ ${count} xe tăng địch để chiến thắng!`,
     grid,
     enemies,
-    maxActiveEnemies: 8, // 8 active enemies hunting simultaneously
+    maxActiveEnemies: 8,
   };
 }
 

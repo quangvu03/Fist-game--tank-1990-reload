@@ -740,7 +740,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-slate-800 text-emerald-400 shrink-0"><Compass className="w-3.5 h-3.5" /></div>
-                    <span className="break-words"><b>Chế Độ Lái:</b> Đổi giữa lái <i>Phím 4 hướng cổ điển</i> hoặc <i>Ngắm bắn chuột 360°</i> linh hoạt.</span>
+                    <span className="break-words"><b>Chế Độ Lái:</b> Lái xe <i>Phím 4 hướng cổ điển</i> (WASD hoặc phím mũi tên) chuẩn xác.</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-slate-800 text-emerald-400 shrink-0"><Volume2 className="w-3.5 h-3.5" /></div>

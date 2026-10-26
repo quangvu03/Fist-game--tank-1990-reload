@@ -21,7 +21,7 @@ export type PowerUpType = 'STAR' | 'SHIELD' | 'BOMB' | 'CLOCK' | 'SHOVEL' | 'HEA
 
 export type GameMode = 'CAMPAIGN' | 'SURVIVAL' | 'BOSS_RUSH';
 export type GameStatus = 'TITLE' | 'PLAYING' | 'PAUSED' | 'STAGE_CLEAR' | 'GAME_OVER' | 'VICTORY';
-export type ControlMode = 'CLASSIC' | 'MOUSE_AIM';
+export type ControlMode = 'CLASSIC';
 
 export interface Tank {
   id: string;

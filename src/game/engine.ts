@@ -33,8 +33,6 @@ import {
   BASE_COORD,
   BASE_CENTER,
   BASE_SHIELD_RADIUS,
-  SURVIVAL_BASE_COORD,
-  SURVIVAL_BASE_CENTER,
 } from './constants';
 import { soundEngine } from '../audio/soundEngine';
 import { particleSystem } from './particleSystem';
@@ -137,6 +135,13 @@ export class GameEngine {
   private shakeOffsetX: number = 0;
   private shakeOffsetY: number = 0;
 
+  // Camera & Viewport tracking (for large expandable Survival maps)
+  public cameraX: number = 0;
+  public cameraY: number = 0;
+  private targetCameraX: number = 0;
+  private targetCameraY: number = 0;
+  private expansionCooldownTimer: number = 0;
+
   // Input
   private keysHeld: Record<string, boolean> = {};
   public gridCols: number = GRID_COLS;
@@ -149,20 +154,11 @@ export class GameEngine {
   public baseCenter = BASE_CENTER;
   public scale: number = 1.0;
   public zoom: number = 1.0;
-  public cameraX: number = 0;
-  public cameraY: number = 0;
   public originX: number = 0;
   public originY: number = 0;
   public viewportWidth: number = CANVAS_WIDTH;
   public viewportHeight: number = CANVAS_HEIGHT;
   public mousePos = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
-  private mouseAimActive: boolean = false;
-
-  // Dynamic Sector Expansion for Survival Mode ("mở rộng khi di chuyển đến khung")
-  public survivalSectorStage: number = 1; // 1 -> 2 -> 3
-  public survivalSectorBounds = { minCol: 12, maxCol: 43, minRow: 8, maxRow: 39 };
-  public sectorNoticeText: string = '';
-  public sectorExpandedNoticeTimer: number = 0;
 
   // Callbacks to UI
   private onStatsUpdate?: (stats: GameStats, remainingEnemies: number) => void;
@@ -276,53 +272,57 @@ export class GameEngine {
     this.currentStageConfig = stageConfig;
     this.stats.stage = stageConfig.id;
 
+    this.gridCols = GRID_COLS;
+    this.gridRows = GRID_ROWS;
+    this.canvasWidth = CANVAS_WIDTH;
+    this.canvasHeight = CANVAS_HEIGHT;
+    this.baseCoord = BASE_COORD;
+    this.baseCenter = BASE_CENTER;
+
     if (this.gameMode === 'SURVIVAL') {
+      // Massive Survival battlefield (56 cols x 40 rows)
       this.gridCols = stageConfig.grid[0].length;
       this.gridRows = stageConfig.grid.length;
       this.canvasWidth = this.gridCols * TILE_SIZE;
       this.canvasHeight = this.gridRows * TILE_SIZE;
-      this.baseCoord = SURVIVAL_BASE_COORD;
-      this.baseCenter = SURVIVAL_BASE_CENTER;
-      this.survivalSectorStage = 1;
-      this.survivalSectorBounds = {
-        minCol: 12,
-        maxCol: 43,
-        minRow: 8,
-        maxRow: this.gridRows - 1,
-      };
-      this.sectorNoticeText = '📡 VÙNG CHIẾN THUẬT GIAI ĐOẠN 1 (TIẾN ĐẾN KHUNG ĐỂ MỞ RỘNG!)';
-      this.sectorExpandedNoticeTimer = 4.0;
-
-      // 8 Distributed perimeter and tactical spawn points across 56x40 map
-      this.spawnPoints = [
-        { x: 3 * TILE_SIZE, y: 2 * TILE_SIZE },
-        { x: 18 * TILE_SIZE, y: 2 * TILE_SIZE },
-        { x: 37 * TILE_SIZE, y: 2 * TILE_SIZE },
-        { x: 52 * TILE_SIZE, y: 2 * TILE_SIZE },
-        { x: 3 * TILE_SIZE, y: 16 * TILE_SIZE },
-        { x: 52 * TILE_SIZE, y: 16 * TILE_SIZE },
-        { x: 10 * TILE_SIZE, y: 28 * TILE_SIZE },
-        { x: 45 * TILE_SIZE, y: 28 * TILE_SIZE },
-      ];
 
       this.grid = [];
       for (let r = 0; r < this.gridRows; r++) {
         this.grid[r] = [...stageConfig.grid[r]];
       }
-    } else {
-      this.gridCols = GRID_COLS;
-      this.gridRows = GRID_ROWS;
-      this.canvasWidth = CANVAS_WIDTH;
-      this.canvasHeight = CANVAS_HEIGHT;
-      this.baseCoord = BASE_COORD;
-      this.baseCenter = BASE_CENTER;
-      this.survivalSectorStage = 3;
-      this.survivalSectorBounds = { minCol: 0, maxCol: this.gridCols - 1, minRow: 0, maxRow: this.gridRows - 1 };
 
-      // Standard symmetrical spawn points across 34-column battlefield
+      // Ensure center staging zone for player is clear
+      const midC = Math.floor(this.gridCols / 2);
+      const midR = Math.floor(this.gridRows / 2);
+      for (let r = midR - 2; r <= midR + 2; r++) {
+        for (let c = midC - 2; c <= midC + 2; c++) {
+          if (r >= 0 && r < this.gridRows && c >= 0 && c < this.gridCols) {
+            this.grid[r][c] = TileType.EMPTY;
+          }
+        }
+      }
+
+      // Symmetrical & perimeter tactical spawn points across large survival map
+      this.spawnPoints = [
+        { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: Math.floor(this.gridCols / 4) * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: Math.floor(this.gridCols / 2) * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: Math.floor((this.gridCols * 3) / 4) * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: 3 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
+        { x: Math.floor(this.gridCols / 4) * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
+        { x: Math.floor((this.gridCols * 3) / 4) * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
+        { x: 3 * TILE_SIZE, y: Math.floor(this.gridRows / 2) * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: Math.floor(this.gridRows / 2) * TILE_SIZE },
+      ];
+    } else {
+      // Symmetrical strategic spawn points across 34-column battlefield
       this.spawnPoints = [
         { x: 1 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 8 * TILE_SIZE, y: 1 * TILE_SIZE },
         { x: 16 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 25 * TILE_SIZE, y: 1 * TILE_SIZE },
         { x: 31 * TILE_SIZE, y: 1 * TILE_SIZE },
       ];
 
@@ -347,23 +347,36 @@ export class GameEngine {
     this.updateViewportSize();
     this.terrainCanvas = this.generateTerrainCanvas();
 
-    // Progressive base tiering based on stage advancement ("càng về sau căn cứ càng cứng hơn")
-    let naturalStageTier = 1;
-    if (this.gameMode === 'CAMPAIGN') {
-      if (stageConfig.id >= 9) naturalStageTier = 5;
-      else if (stageConfig.id >= 7) naturalStageTier = 4;
-      else if (stageConfig.id >= 5) naturalStageTier = 3;
-      else if (stageConfig.id >= 3) naturalStageTier = 2;
-      else naturalStageTier = 1;
-    } else if (this.gameMode === 'SURVIVAL') {
-      naturalStageTier = Math.min(5, 1 + Math.floor((stageConfig.id - 1) / 2));
+    if (this.gameMode === 'SURVIVAL') {
+      // IN SURVIVAL MODE: NO HOME BASE!
+      this.baseTier = 1;
+      this.baseHp = 0;
+      this.stats.baseHp = 0;
+      this.stats.baseMaxHp = 0;
+      this.baseShieldHp = 0;
+      this.baseShieldMaxHp = 0;
+      this.stats.baseShieldHp = 0;
+      this.stats.baseShieldMaxHp = 0;
+      this.stats.baseShieldActive = false;
+      this.stats.canUpgradeBase = false;
+      this.isBaseDestroyed = false;
     } else {
-      naturalStageTier = 4; // Boss rush provides tier 4 fortress
-    }
+      // Progressive base tiering based on stage advancement ("càng về sau căn cứ càng cứng hơn")
+      let naturalStageTier = 1;
+      if (this.gameMode === 'CAMPAIGN') {
+        if (stageConfig.id >= 9) naturalStageTier = 5;
+        else if (stageConfig.id >= 7) naturalStageTier = 4;
+        else if (stageConfig.id >= 5) naturalStageTier = 3;
+        else if (stageConfig.id >= 3) naturalStageTier = 2;
+        else naturalStageTier = 1;
+      } else {
+        naturalStageTier = 4; // Boss rush provides tier 4 fortress
+      }
 
-    // Preserve player upgrades if they previously upgraded the base to a higher tier
-    const finalTier = Math.max(naturalStageTier, this.baseTier);
-    this.applyBaseTier(finalTier, false);
+      // Preserve player upgrades if they previously upgraded the base to a higher tier
+      const finalTier = Math.max(naturalStageTier, this.baseTier);
+      this.applyBaseTier(finalTier, false);
+    }
 
     this.isBaseDestroyed = false;
     this.isStageEnding = false;
@@ -419,6 +432,7 @@ export class GameEngine {
   }
 
   public applyBaseTier(tier: number, isUpgrade: boolean = false) {
+    if (this.gameMode === 'SURVIVAL') return;
     this.baseTier = Math.max(1, Math.min(5, tier));
     const cfg = BASE_TIERS[this.baseTier - 1];
 
@@ -472,6 +486,7 @@ export class GameEngine {
   }
 
   public upgradeBase(): boolean {
+    if (this.gameMode === 'SURVIVAL') return false;
     if (this.baseTier >= 5) {
       this.addFloatText(BASE_CENTER.x, BASE_CENTER.y - 15, 'CĂN CỨ ĐÃ ĐẠT CẤP TỐI ĐA!', '#38bdf8');
       return false;
@@ -547,13 +562,14 @@ export class GameEngine {
     if (!rect.width || !rect.height) return;
     const clientX = e.clientX - rect.left;
     const clientY = e.clientY - rect.top;
-    const mappedX = (clientX - this.originX) / Math.max(0.001, this.scale) + this.cameraX;
-    const mappedY = (clientY - this.originY) / Math.max(0.001, this.scale) + this.cameraY;
+    const mappedX = (clientX - this.originX) / Math.max(0.001, this.scale);
+    const mappedY = (clientY - this.originY) / Math.max(0.001, this.scale);
+    const worldX = mappedX + (this.gameMode === 'SURVIVAL' ? this.cameraX : 0);
+    const worldY = mappedY + (this.gameMode === 'SURVIVAL' ? this.cameraY : 0);
     this.mousePos = {
-      x: Math.max(0, Math.min(this.canvasWidth, mappedX)),
-      y: Math.max(0, Math.min(this.canvasHeight, mappedY)),
+      x: Math.max(0, Math.min(this.canvasWidth, worldX)),
+      y: Math.max(0, Math.min(this.canvasHeight, worldY)),
     };
-    this.mouseAimActive = true;
   };
 
   private handleMouseDown = (e: MouseEvent) => {
@@ -562,8 +578,8 @@ export class GameEngine {
     }
   };
 
-  public setControlMode(mode: ControlMode) {
-    this.controlMode = mode;
+  public setControlMode(_mode: ControlMode) {
+    this.controlMode = 'CLASSIC';
   }
 
   public simulateVirtualInput(action: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FIRE', isHeld: boolean) {
@@ -601,8 +617,17 @@ export class GameEngine {
   // --- Spawning ---
   private spawnPlayer(tier: number = 0) {
     const playerTierConfig = PLAYER_TIERS[Math.min(tier, PLAYER_TIERS.length - 1)];
-    const spawnX = (this.baseCoord.col - 3) * TILE_SIZE;
-    const spawnY = this.baseCoord.row * TILE_SIZE;
+    let spawnX = (this.baseCoord.col - 3) * TILE_SIZE;
+    let spawnY = this.baseCoord.row * TILE_SIZE;
+
+    if (this.gameMode === 'SURVIVAL') {
+      spawnX = Math.floor(this.gridCols / 2) * TILE_SIZE;
+      spawnY = Math.floor(this.gridRows / 2) * TILE_SIZE;
+      this.cameraX = Math.max(0, spawnX - this.viewWidth / 2);
+      this.cameraY = Math.max(0, spawnY - this.viewHeight / 2);
+      this.targetCameraX = this.cameraX;
+      this.targetCameraY = this.cameraY;
+    }
 
     const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
     const reloadSpeed = this.speedBoostTimer > 0 ? playerTierConfig.reloadMax * 0.8 : playerTierConfig.reloadMax;
@@ -640,22 +665,7 @@ export class GameEngine {
     if (this.enemyQueue.length === 0) return;
     if (this.enemies.length >= this.currentStageConfig.maxActiveEnemies) return;
 
-    let spawn = this.spawnPoints[this.nextSpawnIndex % this.spawnPoints.length];
-    if (this.gameMode === 'SURVIVAL') {
-      const activeSpawns = this.spawnPoints.filter(sp => {
-        const c = Math.floor(sp.x / TILE_SIZE);
-        const r = Math.floor(sp.y / TILE_SIZE);
-        return (
-          c >= this.survivalSectorBounds.minCol &&
-          c <= this.survivalSectorBounds.maxCol &&
-          r >= this.survivalSectorBounds.minRow &&
-          r <= this.survivalSectorBounds.maxRow
-        );
-      });
-      if (activeSpawns.length > 0) {
-        spawn = activeSpawns[this.nextSpawnIndex % activeSpawns.length];
-      }
-    }
+    const spawn = this.spawnPoints[this.nextSpawnIndex % this.spawnPoints.length];
     this.nextSpawnIndex++;
 
     const isBlocked = this.enemies.some(
@@ -860,23 +870,7 @@ export class GameEngine {
       this.updatePlayer(dt);
     }
 
-    // Camera Tracking & Sector Expansion in Survival Mode
-    if (this.gameMode === 'SURVIVAL' && this.player && this.player.hp > 0 && !this.isPlayerDying) {
-      const targetCamX = this.player.x + this.player.width / 2 - this.viewWidth / 2;
-      const targetCamY = this.player.y + this.player.height / 2 - this.viewHeight / 2;
-      this.cameraX += (targetCamX - this.cameraX) * 0.12;
-      this.cameraY += (targetCamY - this.cameraY) * 0.12;
 
-      const maxCamX = Math.max(0, this.canvasWidth - this.viewWidth);
-      const maxCamY = Math.max(0, this.canvasHeight - this.viewHeight);
-      this.cameraX = Math.max(0, Math.min(maxCamX, this.cameraX));
-      this.cameraY = Math.max(0, Math.min(maxCamY, this.cameraY));
-
-      this.checkSectorExpansion();
-    } else {
-      this.cameraX = 0;
-      this.cameraY = 0;
-    }
 
     // Update Enemies
     for (const enemy of this.enemies) {
@@ -931,15 +925,187 @@ export class GameEngine {
     }
     this.floatTexts = this.floatTexts.filter(ft => !ft.dead);
 
-    // Check Stage Victory
+    // Survival mode tracking & dynamic map expansion
+    if (this.gameMode === 'SURVIVAL') {
+      this.updateSurvivalMode(dt);
+    }
+
+    // Check Stage Victory (In Survival Mode: Win when ALL enemies are destroyed!)
     if (
       this.enemyQueue.length === 0 &&
       this.enemies.length === 0 &&
-      !this.isBaseDestroyed &&
-      !this.isStageEnding
+      !this.isStageEnding &&
+      (this.gameMode === 'SURVIVAL' || !this.isBaseDestroyed)
     ) {
       this.triggerStageClear();
     }
+  }
+
+  // --- Dynamic Map Expansion & Camera Tracking for Survival Mode ---
+  private updateSurvivalMode(dt: number) {
+    if (this.expansionCooldownTimer > 0) {
+      this.expansionCooldownTimer -= dt;
+    }
+
+    // When the player approaches near the edge of the map, expand the battlefield!
+    if (this.player && this.player.hp > 0 && !this.isPlayerDying && this.expansionCooldownTimer <= 0) {
+      const threshold = 3 * TILE_SIZE; // 78px from edge
+
+      if (this.player.x + this.player.width >= this.canvasWidth - threshold && this.gridCols < 84) {
+        this.expandMap('RIGHT', 8);
+      } else if (this.player.y + this.player.height >= this.canvasHeight - threshold && this.gridRows < 64) {
+        this.expandMap('DOWN', 8);
+      } else if (this.player.x <= threshold && this.gridCols < 84) {
+        this.expandMap('LEFT', 8);
+      } else if (this.player.y <= threshold && this.gridRows < 64) {
+        this.expandMap('UP', 8);
+      }
+    }
+
+    // Smooth Camera Tracking (Centers on the player and clamps to map bounds)
+    if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+      const pCenterX = this.player.x + this.player.width / 2;
+      const pCenterY = this.player.y + this.player.height / 2;
+
+      this.targetCameraX = pCenterX - this.viewWidth / 2;
+      this.targetCameraY = pCenterY - this.viewHeight / 2;
+
+      const maxCamX = Math.max(0, this.canvasWidth - this.viewWidth);
+      const maxCamY = Math.max(0, this.canvasHeight - this.viewHeight);
+
+      this.targetCameraX = Math.max(0, Math.min(maxCamX, this.targetCameraX));
+      this.targetCameraY = Math.max(0, Math.min(maxCamY, this.targetCameraY));
+
+      const lerpSpeed = 7.5;
+      this.cameraX += (this.targetCameraX - this.cameraX) * Math.min(1.0, dt * lerpSpeed);
+      this.cameraY += (this.targetCameraY - this.cameraY) * Math.min(1.0, dt * lerpSpeed);
+    }
+  }
+
+  private generateExpansionTile(c: number, r: number): TileType {
+    const seed = (c * 37 + r * 53 + this.stats.stage * 113) % 10000;
+    const v = Math.sin(seed * 0.17) * Math.cos(seed * 0.29);
+    if (v > 0.44) return TileType.BRICK;
+    if (v < -0.74) return TileType.STEEL;
+    if (v > 0.25 && v <= 0.44 && Math.sin(c * 0.4) > 0.35) return TileType.BUSH;
+    if (v < -0.45 && v >= -0.74 && Math.cos(r * 0.4) > 0.35) return TileType.ICE;
+    return TileType.EMPTY;
+  }
+
+  private expandMap(direction: 'LEFT' | 'RIGHT' | 'UP' | 'DOWN', amount: number = 8) {
+    if (this.gridCols >= 84 && (direction === 'LEFT' || direction === 'RIGHT')) return;
+    if (this.gridRows >= 64 && (direction === 'UP' || direction === 'DOWN')) return;
+
+    this.expansionCooldownTimer = 2.5;
+
+    if (direction === 'RIGHT') {
+      const startCol = this.gridCols;
+      this.gridCols += amount;
+      this.canvasWidth = this.gridCols * TILE_SIZE;
+      for (let r = 0; r < this.gridRows; r++) {
+        for (let c = startCol; c < this.gridCols; c++) {
+          this.grid[r].push(this.generateExpansionTile(c, r));
+        }
+      }
+      this.spawnPoints.push(
+        { x: (this.gridCols - 4) * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: Math.floor(this.gridRows / 2) * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE }
+      );
+      this.addFloatText(this.player!.x, this.player!.y - 25, 'CHIẾN TRƯỜNG MỞ RỘNG PHÍA ĐÔNG! +8 Ô', '#38bdf8');
+    } else if (direction === 'DOWN') {
+      const startRow = this.gridRows;
+      this.gridRows += amount;
+      this.canvasHeight = this.gridRows * TILE_SIZE;
+      for (let r = startRow; r < this.gridRows; r++) {
+        const row: number[] = [];
+        for (let c = 0; c < this.gridCols; c++) {
+          row.push(this.generateExpansionTile(c, r));
+        }
+        this.grid.push(row);
+      }
+      this.spawnPoints.push(
+        { x: 3 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
+        { x: Math.floor(this.gridCols / 2) * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE }
+      );
+      this.addFloatText(this.player!.x, this.player!.y - 25, 'CHIẾN TRƯỜNG MỞ RỘNG PHÍA NAM! +8 Ô', '#38bdf8');
+    } else if (direction === 'LEFT') {
+      const shiftX = amount * TILE_SIZE;
+      this.gridCols += amount;
+      this.canvasWidth = this.gridCols * TILE_SIZE;
+      for (let r = 0; r < this.gridRows; r++) {
+        const prefix: number[] = [];
+        for (let c = 0; c < amount; c++) {
+          prefix.push(this.generateExpansionTile(c, r));
+        }
+        this.grid[r] = [...prefix, ...this.grid[r]];
+      }
+      this.shiftAllEntities(shiftX, 0);
+      this.spawnPoints = this.spawnPoints.map(p => ({ x: p.x + shiftX, y: p.y }));
+      this.spawnPoints.push(
+        { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: 3 * TILE_SIZE, y: Math.floor(this.gridRows / 2) * TILE_SIZE },
+        { x: 3 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE }
+      );
+      this.addFloatText(this.player!.x, this.player!.y - 25, 'CHIẾN TRƯỜNG MỞ RỘNG PHÍA TÂY! +8 Ô', '#38bdf8');
+    } else if (direction === 'UP') {
+      const shiftY = amount * TILE_SIZE;
+      this.gridRows += amount;
+      this.canvasHeight = this.gridRows * TILE_SIZE;
+      const newRows: number[][] = [];
+      for (let r = 0; r < amount; r++) {
+        const row: number[] = [];
+        for (let c = 0; c < this.gridCols; c++) {
+          row.push(this.generateExpansionTile(c, r));
+        }
+        newRows.push(row);
+      }
+      this.grid = [...newRows, ...this.grid];
+      this.shiftAllEntities(0, shiftY);
+      this.spawnPoints = this.spawnPoints.map(p => ({ x: p.x, y: p.y + shiftY }));
+      this.spawnPoints.push(
+        { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: Math.floor(this.gridCols / 2) * TILE_SIZE, y: 3 * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: 3 * TILE_SIZE }
+      );
+      this.addFloatText(this.player!.x, this.player!.y - 25, 'CHIẾN TRƯỜNG MỞ RỘNG PHÍA BẮC! +8 Ô', '#38bdf8');
+    }
+
+    this.terrainCanvas = this.generateTerrainCanvas();
+    soundEngine.playPowerUp();
+    this.addCameraShake(3);
+  }
+
+  private shiftAllEntities(dx: number, dy: number) {
+    if (this.player) {
+      this.player.x += dx;
+      this.player.y += dy;
+    }
+    for (const e of this.enemies) {
+      e.x += dx;
+      e.y += dy;
+    }
+    for (const b of this.bullets) {
+      b.x += dx;
+      b.y += dy;
+    }
+    for (const p of this.powerUps) {
+      p.x += dx;
+      p.y += dy;
+    }
+    for (const t of this.trackMarks) {
+      t.x += dx;
+      t.y += dy;
+    }
+    for (const ft of this.floatTexts) {
+      ft.x += dx;
+      ft.y += dy;
+    }
+    this.cameraX += dx;
+    this.cameraY += dy;
+    this.targetCameraX += dx;
+    this.targetCameraY += dy;
   }
 
   // --- Player Movement & Corner Smoothing ---
@@ -982,14 +1148,8 @@ export class GameEngine {
 
     this.player.dir = newDir;
 
-    // Turret aiming
-    if (this.controlMode === 'MOUSE_AIM' && this.mouseAimActive) {
-      const pCenterX = this.player.x + this.player.width / 2;
-      const pCenterY = this.player.y + this.player.height / 2;
-      this.player.turretAngle = Math.atan2(this.mousePos.y - pCenterY, this.mousePos.x - pCenterX);
-    } else {
-      this.player.turretAngle = DIR_VECTORS[this.player.dir].angle;
-    }
+    // Pure classic 4-direction turret alignment
+    this.player.turretAngle = DIR_VECTORS[this.player.dir].angle;
 
     if (isMoving) {
       const weatherMod = weatherSystem.getSpeedMultiplier();
@@ -1185,20 +1345,30 @@ export class GameEngine {
 
   private decideEnemyDirection(enemy: Tank, forceTurn: boolean = false) {
     const directions: Direction[] = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-    const targetX = this.baseCenter.x;
-    const targetY = this.baseCenter.y;
+    let targetX = this.baseCenter.x;
+    let targetY = this.baseCenter.y;
+
+    if (this.gameMode === 'SURVIVAL') {
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+        targetX = this.player.x + this.player.width / 2;
+        targetY = this.player.y + this.player.height / 2;
+      } else {
+        targetX = this.canvasWidth / 2;
+        targetY = this.canvasHeight / 2;
+      }
+    }
 
     const dx = targetX - (enemy.x + enemy.width / 2);
     const dy = targetY - (enemy.y + enemy.height / 2);
 
     const weights: Record<Direction, number> = {
-      UP: 1.0,
-      DOWN: 2.2,
-      LEFT: dx < 0 ? 2.0 : 0.8,
-      RIGHT: dx > 0 ? 2.0 : 0.8,
+      UP: dy < 0 ? 2.2 : 0.8,
+      DOWN: dy > 0 ? 2.2 : 0.8,
+      LEFT: dx < 0 ? 2.2 : 0.8,
+      RIGHT: dx > 0 ? 2.2 : 0.8,
     };
 
-    if (dy > 0) weights.DOWN += 1.5;
+    if (this.gameMode !== 'SURVIVAL' && dy > 0) weights.DOWN += 1.5;
 
     if (forceTurn) {
       weights[enemy.dir] = 0.05;
@@ -1225,7 +1395,7 @@ export class GameEngine {
     const dirVec = DIR_VECTORS[enemy.dir];
 
     const baseCenterX = this.baseCenter.x;
-    if (enemy.dir === 'DOWN' && Math.abs(eCenterX - baseCenterX) < TANK_SIZE) {
+    if (this.gameMode !== 'SURVIVAL' && enemy.dir === 'DOWN' && Math.abs(eCenterX - baseCenterX) < TANK_SIZE) {
       return true;
     }
 
@@ -1676,7 +1846,7 @@ export class GameEngine {
   }
 
   private destroyBase() {
-    if (this.isBaseDestroyed) return;
+    if (this.gameMode === 'SURVIVAL' || this.isBaseDestroyed) return;
     this.isBaseDestroyed = true;
     this.baseHp = 0;
     this.stats.baseHp = 0;
@@ -1862,16 +2032,7 @@ export class GameEngine {
       return true;
     }
 
-    // In survival mode, also restrict movement to active sector bounds ("khung")
-    if (this.gameMode === 'SURVIVAL') {
-      const secMinX = this.survivalSectorBounds.minCol * TILE_SIZE;
-      const secMaxX = (this.survivalSectorBounds.maxCol + 1) * TILE_SIZE;
-      const secMinY = this.survivalSectorBounds.minRow * TILE_SIZE;
-      const secMaxY = (this.survivalSectorBounds.maxRow + 1) * TILE_SIZE;
-      if (x < secMinX || x + w > secMaxX || y < secMinY || y + h > secMaxY) {
-        return true;
-      }
-    }
+
 
     const pad = 1.0;
     const minCol = Math.floor((x + pad) / TILE_SIZE);
@@ -2169,30 +2330,32 @@ export class GameEngine {
       tCtx.stroke();
     }
 
-    // 7. Base HQ Security Apron Markings (Caution diagonal hazard stripes around base area)
-    const baseApronX = (this.baseCoord.col - 2) * TILE_SIZE;
-    const baseApronY = (this.baseCoord.row - 2) * TILE_SIZE;
-    const baseApronW = 6 * TILE_SIZE;
-    const baseApronH = 4 * TILE_SIZE;
-    tCtx.save();
-    tCtx.beginPath();
-    tCtx.rect(baseApronX, baseApronY, baseApronW, baseApronH);
-    tCtx.clip();
-
-    tCtx.strokeStyle = 'rgba(234, 179, 8, 0.06)';
-    tCtx.lineWidth = 4;
-    for (let d = -this.canvasWidth; d < this.canvasWidth * 2; d += 16) {
+    // 7. Base HQ Security Apron Markings (Caution diagonal hazard stripes around base area - skipped in Survival)
+    if (this.gameMode !== 'SURVIVAL') {
+      const baseApronX = (this.baseCoord.col - 2) * TILE_SIZE;
+      const baseApronY = (this.baseCoord.row - 2) * TILE_SIZE;
+      const baseApronW = 6 * TILE_SIZE;
+      const baseApronH = 4 * TILE_SIZE;
+      tCtx.save();
       tCtx.beginPath();
-      tCtx.moveTo(d, baseApronY);
-      tCtx.lineTo(d + baseApronH, baseApronY + baseApronH);
-      tCtx.stroke();
-    }
+      tCtx.rect(baseApronX, baseApronY, baseApronW, baseApronH);
+      tCtx.clip();
 
-    // Faint yellow boundary demarcation line
-    tCtx.strokeStyle = 'rgba(234, 179, 8, 0.16)';
-    tCtx.lineWidth = 1;
-    tCtx.strokeRect(baseApronX + 0.5, baseApronY + 0.5, baseApronW - 1, baseApronH - 1);
-    tCtx.restore();
+      tCtx.strokeStyle = 'rgba(234, 179, 8, 0.06)';
+      tCtx.lineWidth = 4;
+      for (let d = -this.canvasWidth; d < this.canvasWidth * 2; d += 16) {
+        tCtx.beginPath();
+        tCtx.moveTo(d, baseApronY);
+        tCtx.lineTo(d + baseApronH, baseApronY + baseApronH);
+        tCtx.stroke();
+      }
+
+      // Faint yellow boundary demarcation line
+      tCtx.strokeStyle = 'rgba(234, 179, 8, 0.16)';
+      tCtx.lineWidth = 1;
+      tCtx.strokeRect(baseApronX + 0.5, baseApronY + 0.5, baseApronW - 1, baseApronH - 1);
+      tCtx.restore();
+    }
 
     // 8. Fine Organic Soil Grit, Pebbles & Sand Grains (1,300 specks)
     for (let i = 0; i < 1300; i++) {
@@ -2248,20 +2411,19 @@ export class GameEngine {
     // 1. Draw continuous tactical military warzone terrain across 100% of screen (NO black gaps!)
     this.renderExtendedBackground(ctx, vW, vH);
 
-    // 2. Render 26x26 arena inside perfectly scaled 1:1 square viewport
+    // 2. Render arena inside perfectly scaled 1:1 square viewport
     ctx.save();
     ctx.translate(this.originX, this.originY);
     ctx.scale(this.scale, this.scale);
     ctx.translate(this.shakeOffsetX, this.shakeOffsetY);
 
-    // Clip rendering to visible window boundaries
-    ctx.beginPath();
-    ctx.rect(0, 0, this.viewWidth, this.viewHeight);
-    ctx.clip();
-
-    // Camera transform for World Rendering
-    ctx.save();
-    ctx.translate(-Math.round(this.cameraX), -Math.round(this.cameraY));
+    if (this.gameMode === 'SURVIVAL') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, this.viewWidth, this.viewHeight);
+      ctx.clip();
+      ctx.translate(-Math.round(this.cameraX), -Math.round(this.cameraY));
+    }
 
     // Render arena ground
     if (this.terrainCanvas) {
@@ -2304,7 +2466,9 @@ export class GameEngine {
     this.renderGrid(ctx, true);
 
     // 8. Base Forcefield Shield Matrix
-    this.renderBaseShield(ctx);
+    if (this.gameMode !== 'SURVIVAL') {
+      this.renderBaseShield(ctx);
+    }
 
     // 9. Tactical Arena Perimeter Framing & Corner Hazard Markers
     this.renderArenaBoundary(ctx);
@@ -2315,12 +2479,10 @@ export class GameEngine {
     // 11. Floating texts
     this.renderFloatTexts(ctx);
 
-    // Restore Camera Transform (back to Viewport Window space)
-    ctx.restore();
-
-    // 12. Viewport HUD Overlays (Radar Minimap & Sector Notification Banner)
-    this.renderRadarMinimap(ctx);
-    this.renderSectorNotice(ctx);
+    if (this.gameMode === 'SURVIVAL') {
+      ctx.restore(); // restores clip & camera translation
+      this.renderMinimapRadar(ctx);
+    }
 
     ctx.restore();
 
@@ -2328,163 +2490,115 @@ export class GameEngine {
     weatherSystem.render(ctx);
   }
 
-  private renderRadarMinimap(ctx: CanvasRenderingContext2D) {
-    if (this.gameMode !== 'SURVIVAL') return;
-
-    // Minimap dimensions in top-right corner of viewport
-    const mapW = 124;
-    const mapH = Math.round(mapW * (this.gridRows / this.gridCols)); // ~88px
-    const margin = 10;
-    const mapX = this.viewWidth - mapW - margin;
-    const mapY = margin;
+  private renderMinimapRadar(ctx: CanvasRenderingContext2D) {
+    // 145px military radar terminal in top-right corner of viewport
+    const mapW = 145;
+    const aspect = this.canvasHeight / this.canvasWidth;
+    const mapH = Math.round(mapW * aspect);
+    const pad = 8;
+    const rx = this.viewWidth - mapW - pad;
+    const ry = pad;
 
     ctx.save();
-    // Translucent glass HUD background
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-    ctx.strokeStyle = '#0284c7';
+    // High-tech translucent radar terminal
+    ctx.fillStyle = 'rgba(10, 15, 29, 0.88)';
+    ctx.fillRect(rx, ry, mapW, mapH + 16);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(mapX, mapY, mapW, mapH, 6);
-    ctx.fill();
-    ctx.stroke();
+    ctx.strokeRect(rx, ry, mapW, mapH + 16);
 
-    // Radar Header badge
+    // Radar Header
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+    ctx.fillRect(rx, ry, mapW, 14);
     ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 8px monospace';
+    ctx.font = 'bold 8.5px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`RADAR G.${this.survivalSectorStage}/3`, mapX + 6, mapY + 11);
+    ctx.fillText('RADAR QUÂN SỰ', rx + 4, ry + 10);
 
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${this.gridCols}x${this.gridRows}`, rx + mapW - 4, ry + 10);
+
+    // Radar Screen content area
+    const contentY = ry + 15;
     const scaleX = mapW / this.canvasWidth;
     const scaleY = mapH / this.canvasHeight;
 
-    // Draw active sector perimeter dashed box
-    const secX = mapX + this.survivalSectorBounds.minCol * TILE_SIZE * scaleX;
-    const secY = mapY + this.survivalSectorBounds.minRow * TILE_SIZE * scaleY;
-    const secW = (this.survivalSectorBounds.maxCol - this.survivalSectorBounds.minCol + 1) * TILE_SIZE * scaleX;
-    const secH = (this.survivalSectorBounds.maxRow - this.survivalSectorBounds.minRow + 1) * TILE_SIZE * scaleY;
-
-    ctx.strokeStyle = '#22c55e';
+    // Subtle radar sweep line
+    const sweepAngle = (performance.now() * 0.002) % (Math.PI * 2);
+    const radarCenterX = rx + mapW / 2;
+    const radarCenterY = contentY + mapH / 2;
+    const radarRadius = Math.max(mapW, mapH) / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx, contentY, mapW, mapH);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
     ctx.lineWidth = 1;
-    ctx.setLineDash([3, 2]);
-    ctx.strokeRect(secX, secY, secW, secH);
-    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(radarCenterX, radarCenterY);
+    ctx.lineTo(
+      radarCenterX + Math.cos(sweepAngle) * radarRadius,
+      radarCenterY + Math.sin(sweepAngle) * radarRadius
+    );
+    ctx.stroke();
+    ctx.restore();
 
-    // Draw base HQ
-    const bX = mapX + this.baseCenter.x * scaleX;
-    const bY = mapY + this.baseCenter.y * scaleY;
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(bX - 2.5, bY - 2.5, 5, 5);
+    // Camera Viewport box on Radar (showing current screen window in white/cyan)
+    const viewCamX = rx + this.cameraX * scaleX;
+    const viewCamY = contentY + this.cameraY * scaleY;
+    const viewCamW = Math.min(mapW, this.viewWidth * scaleX);
+    const viewCamH = Math.min(mapH, this.viewHeight * scaleY);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(viewCamX, viewCamY, viewCamW, viewCamH);
 
-    // Draw power-ups
-    ctx.fillStyle = '#facc15';
+    // Draw Power-ups as pulsing yellow dots
     for (const p of this.powerUps) {
       if (p.dead) continue;
-      const px = mapX + p.x * scaleX;
-      const py = mapY + p.y * scaleY;
-      ctx.fillRect(px - 1, py - 1, 2.5, 2.5);
+      const px = rx + p.x * scaleX;
+      const py = contentY + p.y * scaleY;
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
     }
 
-    // Draw enemy tanks
-    ctx.fillStyle = '#ef4444';
+    // Draw Enemies as red dots (Boss as distinct ringed dot)
     for (const e of this.enemies) {
-      if (e && e.hp > 0) {
-        const ex = mapX + (e.x + e.width / 2) * scaleX;
-        const ey = mapY + (e.y + e.height / 2) * scaleY;
+      if (e.hp <= 0) continue;
+      const ex = rx + (e.x + e.width / 2) * scaleX;
+      const ey = contentY + (e.y + e.height / 2) * scaleY;
+      if (e.type === 'BOSS') {
+        ctx.fillStyle = '#f43f5e';
         ctx.beginPath();
-        ctx.arc(ex, ey, e.type === 'BOSS' ? 3 : 1.8, 0, Math.PI * 2);
+        ctx.arc(ex, ey, 3.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#fda4af';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
       }
     }
 
-    // Draw player tank (blinking green dot)
+    // Draw Player as pulsing green dot
     if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
-      const px = mapX + (this.player.x + this.player.width / 2) * scaleX;
-      const py = mapY + (this.player.y + this.player.height / 2) * scaleY;
-      ctx.fillStyle = '#22c55e';
-      ctx.beginPath();
-      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pulsing radar ripple ring around player
-      const ripple = (performance.now() * 0.003) % 1;
-      ctx.strokeStyle = `rgba(74, 222, 128, ${1 - ripple})`;
+      const plx = rx + (this.player.x + this.player.width / 2) * scaleX;
+      const ply = contentY + (this.player.y + this.player.height / 2) * scaleY;
+      const pulse = (performance.now() % 1000) / 1000;
+      ctx.strokeStyle = `rgba(74, 222, 128, ${1 - pulse})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(px, py, 2.5 + ripple * 6, 0, Math.PI * 2);
+      ctx.arc(plx, ply, 3 + pulse * 4, 0, Math.PI * 2);
       ctx.stroke();
+
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(plx, ply, 2.5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Draw visible camera viewport window
-    const camW = this.viewWidth * scaleX;
-    const camH = this.viewHeight * scaleY;
-    const camX = mapX + this.cameraX * scaleX;
-    const camY = mapY + this.cameraY * scaleY;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(camX, camY, camW, camH);
-
     ctx.restore();
-  }
-
-  private renderSectorNotice(ctx: CanvasRenderingContext2D) {
-    if (this.sectorExpandedNoticeTimer <= 0) return;
-    this.sectorExpandedNoticeTimer -= 0.016;
-
-    ctx.save();
-    const bW = Math.min(this.viewWidth - 40, 480);
-    const bH = 34;
-    const bX = (this.viewWidth - bW) / 2;
-    const bY = 18;
-
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(bX, bY, bW, bH, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#facc15';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(this.sectorNoticeText, this.viewWidth / 2, bY + bH / 2);
-    ctx.restore();
-  }
-
-  private checkSectorExpansion() {
-    if (!this.player || this.survivalSectorStage >= 3) return;
-    const pCol = Math.floor((this.player.x + this.player.width / 2) / TILE_SIZE);
-    const pRow = Math.floor((this.player.y + this.player.height / 2) / TILE_SIZE);
-
-    const nearBorder =
-      Math.abs(pCol - this.survivalSectorBounds.minCol) <= 2 ||
-      Math.abs(pCol - this.survivalSectorBounds.maxCol) <= 2 ||
-      Math.abs(pRow - this.survivalSectorBounds.minRow) <= 2;
-
-    if (nearBorder) {
-      if (this.survivalSectorStage === 1) {
-        this.survivalSectorStage = 2;
-        this.survivalSectorBounds = { minCol: 6, maxCol: 49, minRow: 4, maxRow: this.gridRows - 1 };
-        this.sectorNoticeText = '📡 CHIẾN TRƯỜNG ĐÃ MỞ RỘNG (GIAI ĐOẠN 2/3)!';
-        this.sectorExpandedNoticeTimer = 4.0;
-        soundEngine.playPowerUp();
-        this.addCameraShake(7);
-        // Airdrop supply crates in newly unlocked perimeter
-        this.spawnRandomPowerUpAt(8 * TILE_SIZE, 8 * TILE_SIZE);
-        this.spawnRandomPowerUpAt(47 * TILE_SIZE, 8 * TILE_SIZE);
-      } else if (this.survivalSectorStage === 2) {
-        this.survivalSectorStage = 3;
-        this.survivalSectorBounds = { minCol: 0, maxCol: this.gridCols - 1, minRow: 0, maxRow: this.gridRows - 1 };
-        this.sectorNoticeText = '⚠️ TOÀN BỘ ĐẠI CHIẾN TRƯỜNG 56x40 ĐÃ KHAI MỞ!';
-        this.sectorExpandedNoticeTimer = 5.0;
-        soundEngine.playPowerUp();
-        this.addCameraShake(10);
-        // Airdrop mega supplies
-        this.spawnRandomPowerUpAt(6 * TILE_SIZE, 24 * TILE_SIZE);
-        this.spawnRandomPowerUpAt(50 * TILE_SIZE, 24 * TILE_SIZE);
-      }
-    }
   }
 
   private spawnRandomPowerUpAt(x: number, y: number) {
@@ -2567,101 +2681,43 @@ export class GameEngine {
 
   private renderArenaBoundary(ctx: CanvasRenderingContext2D) {
     ctx.save();
-    if (this.gameMode === 'SURVIVAL') {
-      const minX = this.survivalSectorBounds.minCol * TILE_SIZE;
-      const maxX = (this.survivalSectorBounds.maxCol + 1) * TILE_SIZE;
-      const minY = this.survivalSectorBounds.minRow * TILE_SIZE;
-      const maxY = (this.survivalSectorBounds.maxRow + 1) * TILE_SIZE;
-      const w = maxX - minX;
-      const h = maxY - minY;
+    // Glowing perimeter line around combat zone
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0.5, 0.5, this.canvasWidth - 1, this.canvasHeight - 1);
 
-      const time = performance.now() * 0.003;
-      const pulse = 0.5 + Math.sin(time * 3) * 0.3;
-      ctx.strokeStyle = `rgba(56, 189, 248, ${pulse})`;
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([8, 6]);
-      ctx.strokeRect(minX, minY, w, h);
-      ctx.setLineDash([]);
+    // High-tech Corner reinforced brackets
+    const bLen = 16;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.5;
 
-      // Corner brackets
-      const bLen = 22;
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 3;
+    // Top-Left
+    ctx.beginPath();
+    ctx.moveTo(0, bLen);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(bLen, 0);
+    ctx.stroke();
 
-      // Top-Left
-      ctx.beginPath();
-      ctx.moveTo(minX, minY + bLen);
-      ctx.lineTo(minX, minY);
-      ctx.lineTo(minX + bLen, minY);
-      ctx.stroke();
+    // Top-Right
+    ctx.beginPath();
+    ctx.moveTo(this.canvasWidth - bLen, 0);
+    ctx.lineTo(this.canvasWidth, 0);
+    ctx.lineTo(this.canvasWidth, bLen);
+    ctx.stroke();
 
-      // Top-Right
-      ctx.beginPath();
-      ctx.moveTo(maxX - bLen, minY);
-      ctx.lineTo(maxX, minY);
-      ctx.lineTo(maxX, minY + bLen);
-      ctx.stroke();
+    // Bottom-Left
+    ctx.beginPath();
+    ctx.moveTo(0, this.canvasHeight - bLen);
+    ctx.lineTo(0, this.canvasHeight);
+    ctx.lineTo(bLen, this.canvasHeight);
+    ctx.stroke();
 
-      // Bottom-Left
-      ctx.beginPath();
-      ctx.moveTo(minX, maxY - bLen);
-      ctx.lineTo(minX, maxY);
-      ctx.lineTo(minX + bLen, maxY);
-      ctx.stroke();
-
-      // Bottom-Right
-      ctx.beginPath();
-      ctx.moveTo(maxX - bLen, maxY);
-      ctx.lineTo(maxX, maxY);
-      ctx.lineTo(maxX, maxY - bLen);
-      ctx.stroke();
-
-      // Tactical expansion warning text along top frame
-      if (this.survivalSectorStage < 3) {
-        ctx.fillStyle = `rgba(56, 189, 248, ${0.7 + Math.sin(time * 4) * 0.3})`;
-        ctx.font = '900 10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('◄ TIẾN ĐẾN KHUNG ĐỂ MỞ RỘNG CHIẾN TRƯỜNG ►', minX + w / 2, minY - 6);
-      }
-    } else {
-      // Glowing perimeter line around combat zone
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(0.5, 0.5, this.canvasWidth - 1, this.canvasHeight - 1);
-
-      // High-tech Corner reinforced brackets
-      const bLen = 16;
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2.5;
-
-      // Top-Left
-      ctx.beginPath();
-      ctx.moveTo(0, bLen);
-      ctx.lineTo(0, 0);
-      ctx.lineTo(bLen, 0);
-      ctx.stroke();
-
-      // Top-Right
-      ctx.beginPath();
-      ctx.moveTo(this.canvasWidth - bLen, 0);
-      ctx.lineTo(this.canvasWidth, 0);
-      ctx.lineTo(this.canvasWidth, bLen);
-      ctx.stroke();
-
-      // Bottom-Left
-      ctx.beginPath();
-      ctx.moveTo(0, this.canvasHeight - bLen);
-      ctx.lineTo(0, this.canvasHeight);
-      ctx.lineTo(bLen, this.canvasHeight);
-      ctx.stroke();
-
-      // Bottom-Right
-      ctx.beginPath();
-      ctx.moveTo(this.canvasWidth - bLen, this.canvasHeight);
-      ctx.lineTo(this.canvasWidth, this.canvasHeight);
-      ctx.lineTo(this.canvasWidth - bLen, this.canvasHeight);
-      ctx.stroke();
-    }
+    // Bottom-Right
+    ctx.beginPath();
+    ctx.moveTo(this.canvasWidth - bLen, this.canvasHeight);
+    ctx.lineTo(this.canvasWidth, this.canvasHeight);
+    ctx.lineTo(this.canvasWidth - bLen, this.canvasHeight);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -2695,8 +2751,22 @@ export class GameEngine {
   private renderGrid(ctx: CanvasRenderingContext2D, onlyBushes: boolean) {
     const time = performance.now() * 0.003;
 
-    for (let r = 0; r < this.gridRows; r++) {
-      for (let c = 0; c < this.gridCols; c++) {
+    // Viewport tile culling for high-frame rate rendering
+    const minCol = this.gameMode === 'SURVIVAL'
+      ? Math.max(0, Math.floor((this.cameraX - TILE_SIZE) / TILE_SIZE))
+      : 0;
+    const maxCol = this.gameMode === 'SURVIVAL'
+      ? Math.min(this.gridCols - 1, Math.ceil((this.cameraX + this.viewWidth + TILE_SIZE) / TILE_SIZE))
+      : this.gridCols - 1;
+    const minRow = this.gameMode === 'SURVIVAL'
+      ? Math.max(0, Math.floor((this.cameraY - TILE_SIZE) / TILE_SIZE))
+      : 0;
+    const maxRow = this.gameMode === 'SURVIVAL'
+      ? Math.min(this.gridRows - 1, Math.ceil((this.cameraY + this.viewHeight + TILE_SIZE) / TILE_SIZE))
+      : this.gridRows - 1;
+
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
         const tile = this.grid[r][c];
         const x = c * TILE_SIZE;
         const y = r * TILE_SIZE;

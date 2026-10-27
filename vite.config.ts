@@ -6,8 +6,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
-    // Đường dẫn triển khai trên GitHub Pages khi build production
-    base: process.env.NODE_ENV === 'production' ? '/Fist-game--tank-1990-reload/' : '/',
+    base: '/',
 
     plugins: [react(), tailwindcss()],
 

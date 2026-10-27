@@ -258,23 +258,28 @@ function makeStage5(): StageConfig {
   };
 }
 
-// Stage 6: Frozen Tundra
+// Stage 6: Arctic Outpost (Tiền Đồn Bắc Cực - Mặt băng đã xóa)
 function makeStage6(): StageConfig {
   const grid = createEmptyGrid();
   addBaseAndFortress(grid, 6);
 
-  // Lots of ice surfaces
-  for (let r = 5; r <= 18; r++) {
-    for (let c = 2; c <= 7; c++) grid[r][c] = TileType.ICE;
-    for (let c = 18; c <= 23; c++) grid[r][c] = TileType.ICE;
-  }
-
-  // Brick maze in center
+  // Brick tactical maze in center
   for (let r = 4; r <= 16; r += 2) {
     for (let c = 10; c <= 15; c++) {
       grid[r][c] = TileType.BRICK;
     }
   }
+
+  // Flank defensive pillboxes
+  grid[8][4] = TileType.STEEL;
+  grid[8][5] = TileType.STEEL;
+  grid[15][4] = TileType.STEEL;
+  grid[15][5] = TileType.STEEL;
+
+  grid[8][20] = TileType.STEEL;
+  grid[8][21] = TileType.STEEL;
+  grid[15][20] = TileType.STEEL;
+  grid[15][21] = TileType.STEEL;
 
   const enemies: EnemyType[] = [
     'SCOUT', 'SCOUT', 'SCOUT', 'SCOUT',
@@ -284,15 +289,15 @@ function makeStage6(): StageConfig {
 
   return {
     id: 6,
-    name: 'Màn 6: Băng Tuyết Bắc Cực',
-    description: 'Mặt băng trơn trượt tăng tốc độ di chuyển đột biến. Xe trinh sát địch lướt cực nhanh!',
+    name: 'Màn 6: Tiền Đồn Bắc Cực',
+    description: 'Đột kích tiền đồn Bắc Cực quang đãng. Địch bố trí đội hình trinh sát và thiết giáp phối hợp hỏa lực dày đặc!',
     grid,
     enemies,
     maxActiveEnemies: 6,
   };
 }
 
-// Stage 7: Artillery Gauntlet
+// Stage 7: Artillery Gauntlet (Trận Địa Pháo Kích & Thùng Nổ Chiến Thuật)
 function makeStage7(): StageConfig {
   const grid = createEmptyGrid();
   addBaseAndFortress(grid, 7);
@@ -312,6 +317,18 @@ function makeStage7(): StageConfig {
     }
   }
 
+  // Tactical Explosive Fuel Barrels (Thùng nhiên liệu nổ)
+  grid[7][6] = TileType.EXPLOSIVE_BARREL;
+  grid[7][7] = TileType.EXPLOSIVE_BARREL;
+  grid[7][18] = TileType.EXPLOSIVE_BARREL;
+  grid[7][19] = TileType.EXPLOSIVE_BARREL;
+  grid[15][4] = TileType.EXPLOSIVE_BARREL;
+  grid[15][5] = TileType.EXPLOSIVE_BARREL;
+  grid[15][20] = TileType.EXPLOSIVE_BARREL;
+  grid[15][21] = TileType.EXPLOSIVE_BARREL;
+  grid[11][12] = TileType.EXPLOSIVE_BARREL;
+  grid[11][13] = TileType.EXPLOSIVE_BARREL;
+
   const enemies: EnemyType[] = [
     'ARTILLERY', 'ARTILLERY', 'ASSAULT', 'HEAVY',
     'ARTILLERY', 'ARTILLERY', 'HEAVY', 'HEAVY',
@@ -321,7 +338,7 @@ function makeStage7(): StageConfig {
   return {
     id: 7,
     name: 'Màn 7: Hỏa Lực Pháo Binh',
-    description: 'Trận địa pháo kích tầm xa. Căn cứ kích hoạt tường Titanium vững chãi!',
+    description: 'Trận địa pháo kích tầm xa kết hợp các thùng nhiên liệu nổ chiến thuật. Bắn trúng thùng nổ để hủy diệt xe pháo địch xung quanh!',
     grid,
     enemies,
     maxActiveEnemies: 6,
@@ -347,6 +364,20 @@ function makeStage8(): StageConfig {
     }
   }
 
+  // Tactical Explosive Fuel Barrels
+  grid[6][4] = TileType.EXPLOSIVE_BARREL;
+  grid[7][4] = TileType.EXPLOSIVE_BARREL;
+  grid[6][21] = TileType.EXPLOSIVE_BARREL;
+  grid[7][21] = TileType.EXPLOSIVE_BARREL;
+  grid[14][10] = TileType.EXPLOSIVE_BARREL;
+  grid[14][11] = TileType.EXPLOSIVE_BARREL;
+  grid[14][14] = TileType.EXPLOSIVE_BARREL;
+  grid[14][15] = TileType.EXPLOSIVE_BARREL;
+  grid[10][1] = TileType.EXPLOSIVE_BARREL;
+  grid[10][2] = TileType.EXPLOSIVE_BARREL;
+  grid[10][23] = TileType.EXPLOSIVE_BARREL;
+  grid[10][24] = TileType.EXPLOSIVE_BARREL;
+
   const enemies: EnemyType[] = [
     'SCOUT', 'ASSAULT', 'HEAVY', 'ARTILLERY',
     'HEAVY', 'HEAVY', 'ARTILLERY', 'HEAVY',
@@ -356,7 +387,7 @@ function makeStage8(): StageConfig {
   return {
     id: 8,
     name: 'Màn 8: Thung Lũng Phục Kích',
-    description: 'Các kênh nước chia cắt quân đoàn. Địch liên tục ép gọng kìm từ cả 2 cánh!',
+    description: 'Các kênh nước chia cắt quân đoàn, bố trí các thùng nổ chiến lược tại cửa ngõ tiến công của địch!',
     grid,
     enemies,
     maxActiveEnemies: 6,
@@ -376,6 +407,18 @@ function makeStage9(): StageConfig {
     }
   }
 
+  // Tactical Explosive Fuel Barrels
+  grid[5][5] = TileType.EXPLOSIVE_BARREL;
+  grid[5][6] = TileType.EXPLOSIVE_BARREL;
+  grid[5][19] = TileType.EXPLOSIVE_BARREL;
+  grid[5][20] = TileType.EXPLOSIVE_BARREL;
+  grid[11][8] = TileType.EXPLOSIVE_BARREL;
+  grid[11][9] = TileType.EXPLOSIVE_BARREL;
+  grid[11][16] = TileType.EXPLOSIVE_BARREL;
+  grid[11][17] = TileType.EXPLOSIVE_BARREL;
+  grid[14][12] = TileType.EXPLOSIVE_BARREL;
+  grid[14][13] = TileType.EXPLOSIVE_BARREL;
+
   const enemies: EnemyType[] = [
     'HEAVY', 'HEAVY', 'ARTILLERY', 'ASSAULT',
     'HEAVY', 'HEAVY', 'ARTILLERY', 'HEAVY',
@@ -386,7 +429,7 @@ function makeStage9(): StageConfig {
   return {
     id: 9,
     name: 'Màn 9: Bức Tường Thép',
-    description: 'Hàng rào thép kiên cố đan xen với thùng gỗ tiếp tế. Căn cứ được bảo vệ bởi Màng Chắn Năng Lượng Lượng Tử!',
+    description: 'Hàng rào thép kiên cố đan xen các thùng nổ nhiên liệu cao áp. Kích nổ thùng để phá hủy hàng ngũ thiết giáp địch!',
     grid,
     enemies,
     maxActiveEnemies: 6,
@@ -419,6 +462,20 @@ function makeStage10(): StageConfig {
     }
   }
 
+  // Tactical Explosive Fuel Barrels around Arena
+  grid[7][7] = TileType.EXPLOSIVE_BARREL;
+  grid[7][8] = TileType.EXPLOSIVE_BARREL;
+  grid[7][17] = TileType.EXPLOSIVE_BARREL;
+  grid[7][18] = TileType.EXPLOSIVE_BARREL;
+  grid[13][7] = TileType.EXPLOSIVE_BARREL;
+  grid[13][8] = TileType.EXPLOSIVE_BARREL;
+  grid[13][17] = TileType.EXPLOSIVE_BARREL;
+  grid[13][18] = TileType.EXPLOSIVE_BARREL;
+  grid[11][3] = TileType.EXPLOSIVE_BARREL;
+  grid[11][4] = TileType.EXPLOSIVE_BARREL;
+  grid[11][21] = TileType.EXPLOSIVE_BARREL;
+  grid[11][22] = TileType.EXPLOSIVE_BARREL;
+
   const enemies: EnemyType[] = [
     'HEAVY', 'ARTILLERY', 'BOSS', 'HEAVY', 'ARTILLERY', 'HEAVY', 'HEAVY'
   ];
@@ -426,7 +483,7 @@ function makeStage10(): StageConfig {
   return {
     id: 10,
     name: 'Màn 10: Trận Chiến Titan Tối Thượng',
-    description: 'Trùm Chiến Hạm Titan xuất hiện. Căn cứ Lượng Tử Tối Thượng với giáp cực đại và súng tự động!',
+    description: 'Trùm Chiến Hạm Titan xuất hiện. Tận dụng các thùng nổ rải rác trong đấu trường để gây sát thương diện rộng lên Trùm và tùy tùng!',
     grid,
     enemies,
     maxActiveEnemies: 4,
@@ -458,48 +515,61 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
   // NOTE: IN SURVIVAL MODE, THERE IS NO HOME BASE!
   // The player operates independently across the vast warzone and wins by destroying all enemy tanks!
 
-  // 1. Water Canals and Ice Crossings (4 Tactical Canal Channels)
-  // West Canal 1: Col 12, rows 4..35
-  for (let r = 4; r <= 35; r++) {
-    if ((r >= 10 && r <= 12) || (r >= 22 && r <= 24)) {
-      grid[r][12] = TileType.ICE;
-    } else {
-      grid[r][12] = TileType.WATER;
+  // 1. Water Ponds with Wide Bridges (open navigation - tanks will never get trapped)
+  // Northwest Pond
+  for (let r = 8; r <= 12; r++) {
+    for (let c = 12; c <= 16; c++) {
+      grid[r][c] = TileType.WATER;
+    }
+  }
+  // Northeast Pond
+  for (let r = 8; r <= 12; r++) {
+    for (let c = 39; c <= 43; c++) {
+      grid[r][c] = TileType.WATER;
+    }
+  }
+  // Southwest Pond
+  for (let r = 27; r <= 31; r++) {
+    for (let c = 12; c <= 16; c++) {
+      grid[r][c] = TileType.WATER;
+    }
+  }
+  // Southeast Pond
+  for (let r = 27; r <= 31; r++) {
+    for (let c = 39; c <= 43; c++) {
+      grid[r][c] = TileType.WATER;
     }
   }
 
-  // East Canal 2: Col 43, rows 4..35
-  for (let r = 4; r <= 35; r++) {
-    if ((r >= 10 && r <= 12) || (r >= 22 && r <= 24)) {
-      grid[r][43] = TileType.ICE;
-    } else {
-      grid[r][43] = TileType.WATER;
-    }
+  // Tactical Explosive Fuel Barrels (Thùng nhiên liệu nổ)
+  // Replaces the old ice surfaces with high-impact strategic explosive barrel caches
+  const barrelCaches = [
+    // West tactical depot cache
+    [19, 9], [19, 10], [20, 9], [20, 10],
+    // East tactical depot cache
+    [19, 45], [19, 46], [20, 45], [20, 46],
+    // Northwest chokepoint cache
+    [10, 18], [11, 18],
+    // Northeast chokepoint cache
+    [10, 37], [11, 37],
+    // Southwest ambush cache
+    [29, 18], [30, 18],
+    // Southeast ambush cache
+    [29, 37], [30, 37],
+    // North center crossroads cache
+    [10, 27], [10, 28],
+    // South center crossroads cache
+    [29, 27], [29, 28],
+  ];
+
+  for (const [br, bc] of barrelCaches) {
+    grid[br][bc] = TileType.EXPLOSIVE_BARREL;
   }
 
-  // North-Center Water Barrier (Row 11, Cols 20..35)
-  for (let c = 20; c <= 35; c++) {
-    if (c === 27 || c === 28) {
-      grid[11][c] = TileType.ICE; // Ice bridge
-    } else {
-      grid[11][c] = TileType.WATER;
-    }
-  }
-
-  // South-Center Water Barrier (Row 28, Cols 20..35)
-  for (let c = 20; c <= 35; c++) {
-    if (c === 27 || c === 28) {
-      grid[28][c] = TileType.ICE;
-    } else {
-      grid[28][c] = TileType.WATER;
-    }
-  }
-
-  // 2. Tactical Fortified Bunkers & Pillboxes across sectors
+  // 2. Tactical Fortified Bunkers (isolated 2x2 pillboxes with wide clearance around them)
   const pillboxes = [
     [6, 6], [6, 48], [32, 6], [32, 48],
-    [16, 6], [16, 48], [24, 6], [24, 48],
-    [6, 26], [32, 26], [19, 18], [19, 36],
+    [18, 16], [18, 38], [8, 27], [30, 27],
   ];
   for (const [br, bc] of pillboxes) {
     grid[br][bc] = TileType.STEEL;
@@ -508,24 +578,22 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
     grid[br + 1][bc + 1] = TileType.STEEL;
   }
 
-  // 3. Dense Wooden Crate Depots & Brick Maze (Thùng gỗ quân sự tiếp tế)
+  // 3. Destructible Wooden Supply Crate Clusters & Brick Walls (can be blasted through by both player and AI tanks)
   const seed = wave * 3041 + 137;
-  for (let r = 3; r < rows - 3; r += 2) {
-    for (let c = 3; c < cols - 3; c += 2) {
-      // Keep canals clear
-      if (c === 12 || c === 43) continue;
-      // Keep water barriers clear
-      if ((r === 11 || r === 28) && c >= 19 && c <= 36) continue;
-      // Keep player center staging ground (cols 24..31, rows 17..22) completely clear
-      if (c >= 24 && c <= 31 && r >= 17 && r <= 22) continue;
+  for (let r = 4; r < rows - 4; r += 2) {
+    for (let c = 4; c < cols - 4; c += 2) {
+      // Keep central staging area (cols 22..33, rows 16..24) completely clear
+      if (c >= 22 && c <= 33 && r >= 16 && r <= 24) continue;
+      // Do not overwrite water or steel
+      if (grid[r][c] !== TileType.EMPTY) continue;
 
-      const val = Math.sin(seed + r * 13 + c * 19);
-      if (val > 0.38) {
+      const val = Math.sin(seed + r * 17 + c * 23);
+      if (val > 0.42) {
         grid[r][c] = TileType.BRICK;
-        if (c + 1 < cols - 3 && c + 1 !== 12 && c + 1 !== 43) {
+        if (c + 1 < cols - 4 && grid[r][c + 1] === TileType.EMPTY) {
           grid[r][c + 1] = TileType.BRICK;
         }
-      } else if (val < -0.74) {
+      } else if (val < -0.82) {
         grid[r][c] = TileType.STEEL;
       }
     }
@@ -533,12 +601,10 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
 
   // 4. Strategic Foliage / Bushes for tactical ambush
   const bushSectors = [
-    { r1: 5, r2: 9, c1: 15, c2: 19 },
-    { r1: 5, r2: 9, c1: 36, c2: 40 },
-    { r1: 30, r2: 34, c1: 15, c2: 19 },
-    { r1: 30, r2: 34, c1: 36, c2: 40 },
-    { r1: 17, r2: 22, c1: 4, c2: 8 },
-    { r1: 17, r2: 22, c1: 47, c2: 51 },
+    { r1: 5, r2: 8, c1: 20, c2: 24 },
+    { r1: 5, r2: 8, c1: 31, c2: 35 },
+    { r1: 31, r2: 34, c1: 20, c2: 24 },
+    { r1: 31, r2: 34, c1: 31, c2: 35 },
   ];
   for (const b of bushSectors) {
     for (let r = b.r1; r <= b.r2; r++) {
@@ -550,8 +616,48 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
     }
   }
 
-  // 5. Enemy Roster: Scale 32 to 50 tanks per wave
-  const count = 32 + Math.min(24, (wave - 1) * 6);
+  // 5. GUARANTEE ALL ENEMY SPAWN ZONES ARE 100% EMPTY (Zero stuck tanks!)
+  const spawnCoordinates = [
+    { r: 3, c: 6 },
+    { r: 3, c: 18 },
+    { r: 3, c: 28 },
+    { r: 3, c: 38 },
+    { r: 3, c: 49 },
+    { r: rows - 4, c: 6 },
+    { r: rows - 4, c: 18 },
+    { r: rows - 4, c: 28 },
+    { r: rows - 4, c: 38 },
+    { r: rows - 4, c: 49 },
+    { r: 14, c: 3 },
+    { r: 25, c: 3 },
+    { r: 14, c: cols - 4 },
+    { r: 25, c: cols - 4 },
+  ];
+
+  for (const sp of spawnCoordinates) {
+    for (let dr = -1; dr <= 2; dr++) {
+      for (let dc = -1; dc <= 2; dc++) {
+        const tr = sp.r + dr;
+        const tc = sp.c + dc;
+        if (tr >= 0 && tr < rows && tc >= 0 && tc < cols) {
+          grid[tr][tc] = TileType.EMPTY;
+        }
+      }
+    }
+  }
+
+  // Also guarantee player staging ground (cols 24..31, rows 17..22) is completely empty
+  for (let r = 16; r <= 23; r++) {
+    for (let c = 23; c <= 32; c++) {
+      grid[r][c] = TileType.EMPTY;
+    }
+  }
+
+  // 6. Enemy Roster: Scaled, intense and conquerable
+  // Wave 1: 18 tanks (exciting pace, victory within reach)
+  // Wave 2: 24 tanks
+  // Wave 3+: +6 per wave up to 42
+  const count = Math.min(42, 18 + (wave - 1) * 6);
   const enemies: EnemyType[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -560,9 +666,9 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
       enemies.push('BOSS');
     } else {
       const weight = Math.random();
-      if (weight < 0.25) enemies.push('SCOUT');
-      else if (weight < 0.55) enemies.push('ASSAULT');
-      else if (weight < 0.82) enemies.push('HEAVY');
+      if (weight < 0.35) enemies.push('SCOUT');
+      else if (weight < 0.65) enemies.push('ASSAULT');
+      else if (weight < 0.88) enemies.push('HEAVY');
       else enemies.push('ARTILLERY');
     }
   }
@@ -573,7 +679,7 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
     description: `Chiến trường siêu rộng không có căn cứ chủ! Di chuyển đến gần viền để mở rộng map, tiêu diệt toàn bộ ${count} xe tăng địch để chiến thắng!`,
     grid,
     enemies,
-    maxActiveEnemies: 8,
+    maxActiveEnemies: Math.min(8, 6 + Math.floor(wave / 2)),
   };
 }
 

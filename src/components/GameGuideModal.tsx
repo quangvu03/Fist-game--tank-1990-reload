@@ -668,21 +668,21 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                     🌿
                   </div>
                   <div className="min-w-0 flex-1 break-words">
-                    <h4 className="font-bold text-emerald-300 text-xs">Bụi Cây Dã Chiến</h4>
+                    <h4 className="font-bold text-emerald-300 text-xs">Bụi Cây Dã Chiến (Ẩn Nấp & Che Khuất Tầm Nhìn)</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
-                      Cung cấp khả năng ngụy trang tác chiến. Tán cây bán trong suốt giúp người chơi vẫn nhìn rõ xe bên dưới.
+                      Che khuất hoàn toàn tầm nhìn: Khi xe tăng địch ở trong hoặc phía sau bụi cây, bạn không thể nhìn thấy chúng (kể cả tia ngắm laser và chấm đỏ radar). <b>Chỉ khi bạn tiến vào trong bụi cây</b> thì tán lá xung quanh mới trở nên trong suốt, mở khóa tầm nhìn xuyên thấu để phát hiện xe địch bên trong hoặc phía sau bụi rậm!
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-400 flex items-center justify-center text-cyan-300 font-bold text-sm shrink-0">
-                    ❄️
+                <div className="bg-slate-950/60 border border-red-900/60 rounded-xl p-3 flex items-start gap-2.5 min-w-0 overflow-hidden">
+                  <div className="w-8 h-8 rounded-lg bg-red-950 border border-red-500 flex items-center justify-center text-red-400 font-bold text-sm shrink-0">
+                    💥
                   </div>
                   <div className="min-w-0 flex-1 break-words">
-                    <h4 className="font-bold text-cyan-200 text-xs">Mặt Đường Băng Trơn Trượt</h4>
+                    <h4 className="font-bold text-red-400 text-xs">Thùng Nhiên Liệu Nổ Chiến Thuật (Thùng Nổ)</h4>
                     <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
-                      Mặt đường băng tuyết trơn trượt, làm xe bị trượt nhẹ theo đà quán tính khi rẽ ngoặt.
+                      Thay thế các mặt băng trong Chế độ Sinh Tồn và Chiến Dịch từ Màn 7 trở đi: Khi bạn bắn trúng thùng nổ, sóng nổ cực mạnh sẽ kích hoạt phá hủy ngay lập tức các xe tăng địch xung quanh. Nếu bạn đứng gần vụ nổ sẽ bị trừ HP! Tuy nhiên, khi xe địch bắn vỡ thùng nổ, các xe địch xung quanh hoàn toàn không bị ảnh hưởng.
                     </p>
                   </div>
                 </div>

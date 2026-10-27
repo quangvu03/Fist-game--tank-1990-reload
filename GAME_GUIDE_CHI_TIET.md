@@ -121,8 +121,8 @@ Sở chỉ huy là biểu tượng **Đại Bàng Quân Đội** tại trung tâ
 | 🧱 | **Bê Tông Gia Cố (Reinforced)** | Chặn xe di chuyển. | Bị phá hủy sau **2 phát đạn** (có hiệu ứng rạn nứt sau phát thứ 1). |
 | ⚙️ | **Tường Thép Hợp Kim (Steel)** | Chặn xe di chuyển. | **Miễn nhiễm đạn thường**. Chỉ bị phá hủy bởi xe người chơi Cấp 4 hoặc Trùm Titan. |
 | 💧 | **Vùng Nước Sâu (Water)** | **Chặn xe di chuyển**, xe không thể đi qua. | Đạn pháo, tên lửa và laser **bay xuyên qua bình thường**. |
-| 🌿 | **Bụi Cây Dã Chiến (Bush)** | Xe đi xuyên qua được, cung cấp khả năng ẩn nấp ngụy trang. | Đạn bay xuyên qua bình thường. |
-| ❄️ | **Mặt Băng Trơn (Ice)** | Xe đi qua bị trượt theo đà quán tính khi rẽ hướng. | Không ảnh hưởng đến quỹ đạo đạn. |
+| 🌿 | **Bụi Cây Dã Chiến (Bush)** | Xe đi xuyên qua được. **Cơ chế che khuất tầm nhìn (Line-of-Sight Occlusion):** Khi xe tăng địch ở trong hoặc phía sau bụi cây, người chơi hoàn toàn không nhìn thấy xe địch, tia laser cảnh báo lẫn chấm đỏ radar. **Chỉ khi người chơi tiến vào trong bụi cây** thì bụi rậm mới trở nên bán trong suốt, mở khóa tầm nhìn xuyên thấu giúp người chơi nhìn rõ mọi mục tiêu ẩn nấp bên trong hoặc phía sau bụi rậm! Đồng thời xe người chơi nhận trạng thái `🌿 ẨN NẤP`. | Đạn pháo bay xuyên qua bình thường. |
+| 💥 | **Thùng Nhiên Liệu Nổ (Explosive Barrel)** | Chặn xe di chuyển. **Cơ chế kích nổ chiến thuật:** Xuất hiện trong Chế độ Sinh Tồn và Chiến Dịch từ Màn 7 trở đi (thay thế hoàn toàn mặt băng). Khi Người Chơi bắn trúng thùng nổ, sóng nổ cực mạnh sẽ tiêu diệt ngay lập tức các xe tăng địch xung quanh. Nếu người chơi đứng quá gần vụ nổ sẽ bị trừ HP! Khi xe địch bắn nổ thùng, các xe địch xung quanh hoàn toàn không bị ảnh hưởng. | Kích nổ ngay lập tức khi trúng 1 viên đạn hoặc sóng nổ lân cận. |
 | 🛡️ | **Màn Năng Lượng (Energy Barrier)**| Tường lượng tử siêu bền của căn cứ Cấp 5. | Chịu được từ **3 đến 5 phát đạn pháo**. |
 
 ---

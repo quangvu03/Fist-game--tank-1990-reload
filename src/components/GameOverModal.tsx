@@ -50,8 +50,10 @@ export function GameOverModal({
           <p className="text-xs text-slate-400 mt-1">
             {isWon
               ? (stats.gameMode === 'SURVIVAL'
-                  ? `Bạn đã tiêu diệt toàn bộ số xe tăng địch trên chiến trường mở rộng Đợt ${stats.stage}!`
+                  ? `Xuất sắc! Bạn đã tiêu diệt toàn bộ số xe tăng địch trên chiến trường mở rộng Đợt ${stats.stage}!`
                   : 'Bạn đã quét sạch toàn bộ lực lượng thiết giáp địch trên chiến trường.')
+              : stats.gameMode === 'SURVIVAL'
+              ? `Chiến xa của bạn đã bị tiêu diệt tại Đợt ${stats.stage}. Hãy tái xuất kích và chinh phục chiến trường sinh tồn!`
               : 'Lực lượng của bạn đã cạn kiệt. Hãy tái tập hợp và phản công!'}
           </p>
         </div>

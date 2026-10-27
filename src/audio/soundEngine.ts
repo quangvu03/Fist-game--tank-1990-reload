@@ -272,6 +272,72 @@ class SoundEngine {
     }
   }
 
+  // --- Tactical Fuel Barrel Detonation Sound ---
+  public playBarrelExplosion() {
+    if (this.isMuted) return;
+    try {
+      this.resumeCtx();
+      if (!this.ctx || !this.masterGain) return;
+
+      const t = this.ctx.currentTime;
+      const duration = 0.48;
+
+      // 1. High-pressure canister metal rupture crack
+      const metalOsc = this.ctx.createOscillator();
+      const metalGain = this.ctx.createGain();
+      metalOsc.type = 'sawtooth';
+      metalOsc.frequency.setValueAtTime(480, t);
+      metalOsc.frequency.exponentialRampToValueAtTime(80, t + 0.12);
+      metalGain.gain.setValueAtTime(0.35, t);
+      metalGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      metalOsc.connect(metalGain);
+      metalGain.connect(this.masterGain);
+      metalOsc.start(t);
+      metalOsc.stop(t + 0.12);
+
+      // 2. Heavy Sub-bass Concussive Shockwave
+      const subOsc = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(160, t);
+      subOsc.frequency.exponentialRampToValueAtTime(25, t + duration);
+      subGain.gain.setValueAtTime(0.48, t);
+      subGain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      subOsc.connect(subGain);
+      subGain.connect(this.masterGain);
+      subOsc.start(t);
+      subOsc.stop(t + duration);
+
+      // 3. Fiery roar noise burst
+      const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.2);
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1100, t);
+      filter.frequency.exponentialRampToValueAtTime(140, t + duration);
+      filter.Q.setValueAtTime(1.8, t);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.45, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.masterGain);
+
+      noise.start(t);
+    } catch {
+      // Safe guard
+    }
+  }
+
   // --- Power-Up Picked Up ---
   public playPowerUp() {
     if (this.isMuted) return;

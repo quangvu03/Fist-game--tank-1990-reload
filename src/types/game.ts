@@ -7,7 +7,9 @@ export enum TileType {
   STEEL = 2,
   WATER = 3,
   BUSH = 4,
-  ICE = 5,
+  ICE = 5, // Legacy alias
+  EXPLOSIVE_BARREL = 5, // Tactical Explosive Barrel (Thùng nhiên liệu nổ)
+  BARREL = 5,
   BASE = 6,
   BASE_DESTROYED = 7,
   REINFORCED_WALL = 8,

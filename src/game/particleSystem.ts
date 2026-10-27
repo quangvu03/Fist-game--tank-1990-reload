@@ -207,6 +207,148 @@ export class ParticleSystem {
   }
 
   /**
+   * TACTICAL EXPLOSIVE BARREL DETONATION
+   * Fiery shockwave, red/yellow flame bursts, jagged metal canister shrapnel, and dense black smoke.
+   */
+  public emitBarrelExplosion(x: number, y: number, radius: number = 38) {
+    // 1. Blinding White/Yellow core flash
+    this.addParticle({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      drag: 1,
+      size: radius * 0.9,
+      startSize: 8,
+      endSize: radius * 1.3,
+      life: 0.14,
+      maxLife: 0.14,
+      color: '#ffffff',
+      alpha: 1.0,
+      type: 'flash',
+      shape: 'circle',
+    });
+
+    // 2. High-speed Fiery Shockwave Ring
+    this.addParticle({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      drag: 1,
+      size: 6,
+      startSize: 6,
+      endSize: radius * 2.4,
+      life: 0.32,
+      maxLife: 0.32,
+      color: '#ff4400',
+      alpha: 0.95,
+      type: 'shockwave',
+      shape: 'ring',
+    });
+
+    // 3. Secondary Golden-Orange Pressure Wave
+    this.addParticle({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      drag: 1,
+      size: 10,
+      startSize: 10,
+      endSize: radius * 1.8,
+      life: 0.42,
+      maxLife: 0.42,
+      color: '#facc15',
+      alpha: 0.85,
+      type: 'shockwave',
+      shape: 'ring',
+    });
+
+    // 4. Fiery Fireball Burst
+    for (let i = 0; i < 22; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const speed = 30 + Math.random() * 95;
+      const colors = ['#ffffff', '#fef08a', '#f97316', '#ef4444', '#b91c1c'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const life = 0.35 + Math.random() * 0.35;
+
+      this.addParticle({
+        x: x + (Math.random() - 0.5) * 8,
+        y: y + (Math.random() - 0.5) * 8,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed - 15,
+        drag: 0.92,
+        gravity: -15,
+        size: 7 + Math.random() * 7,
+        startSize: 7 + Math.random() * 7,
+        endSize: 1,
+        life,
+        maxLife: life,
+        color,
+        alpha: 0.95,
+        type: 'flame',
+        shape: 'circle',
+      });
+    }
+
+    // 5. Metal Canister Red & Charcoal Shrapnel Shards
+    for (let i = 0; i < 16; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const speed = 70 + Math.random() * 140;
+      const life = 0.45 + Math.random() * 0.4;
+      const metalColors = ['#ef4444', '#b91c1c', '#1e293b', '#facc15', '#64748b'];
+
+      this.addParticle({
+        x: x + (Math.random() - 0.5) * 6,
+        y: y + (Math.random() - 0.5) * 6,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        drag: 0.90,
+        gravity: 80,
+        size: 3 + Math.random() * 4,
+        startSize: 3 + Math.random() * 4,
+        endSize: 2,
+        width: 3 + Math.random() * 4,
+        height: 2 + Math.random() * 2,
+        angle: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 25,
+        life,
+        maxLife: life,
+        color: metalColors[Math.floor(Math.random() * metalColors.length)],
+        alpha: 1.0,
+        type: 'debris',
+        shape: 'rect',
+      });
+    }
+
+    // 6. Dense billowing smoke cloud
+    for (let i = 0; i < 12; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const speed = 15 + Math.random() * 35;
+      const life = 0.5 + Math.random() * 0.45;
+
+      this.addParticle({
+        x: x + (Math.random() - 0.5) * 12,
+        y: y + (Math.random() - 0.5) * 12,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed - 22,
+        drag: 0.94,
+        gravity: -10,
+        size: 8,
+        startSize: 8,
+        endSize: 22 + Math.random() * 12,
+        life,
+        maxLife: life,
+        color: Math.random() < 0.6 ? '#1e293b' : '#475569',
+        alpha: 0.75,
+        type: 'smoke',
+        shape: 'circle',
+      });
+    }
+  }
+
+  /**
    * 2. WOODEN SUPPLY CRATE DESTRUCTION (THÙNG GỖ QUÂN SỰ BỊ BẮN VỠ)
    * Spinning timber plank splinters flying with bullet momentum, golden-amber sawdust puffs,
    * and flying metal corner-bracket nail sparks.

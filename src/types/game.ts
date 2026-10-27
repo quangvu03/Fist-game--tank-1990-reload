@@ -52,6 +52,7 @@ export interface Tank {
   tracksOffset: number;
   stuckTimer?: number;
   currentDecisionTimer?: number;
+  isHunter?: boolean; // Xe tăng đặc nhiệm truy lùng & bám đuổi tiêu diệt người chơi
 }
 
 export interface Bullet {

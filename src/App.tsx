@@ -3,6 +3,7 @@ import { GameEngine } from './game/engine';
 import { GameMode, GameStatus, ControlMode, GameStats, StageConfig } from './types/game';
 import { CAMPAIGN_STAGES, generateSurvivalStage, generateBossRushStage } from './game/stages';
 import { soundEngine } from './audio/soundEngine';
+import { musicEngine } from './audio/musicEngine';
 import { TitleScreen } from './components/TitleScreen';
 import { GameHUD, GameFooter } from './components/GameHUD';
 import { PauseModal } from './components/PauseModal';
@@ -19,8 +20,10 @@ export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>('CAMPAIGN');
   const [controlMode, setControlMode] = useState<ControlMode>('CLASSIC');
   const [isMuted, setIsMuted] = useState<boolean>(() => soundEngine.getMuted());
+  const [isMusicMuted, setIsMusicMuted] = useState<boolean>(() => musicEngine.getMuted());
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const wasPlayingBeforeGuideRef = useRef<boolean>(false);
+  const prevGameStatusRef = useRef<GameStatus>('TITLE');
 
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
   const [currentStageConfig, setCurrentStageConfig] = useState<StageConfig>(CAMPAIGN_STAGES[0]);
@@ -33,7 +36,7 @@ export default function App() {
     playerMaxHp: 3,
     playerTier: 1,
     stage: 1,
-    totalStages: 10,
+    totalStages: 21,
     kills: { SCOUT: 0, ASSAULT: 0, HEAVY: 0, ARTILLERY: 0, BOSS: 0 },
     totalKills: 0,
     baseHp: 2,
@@ -67,15 +70,50 @@ export default function App() {
 
   const [remainingEnemies, setRemainingEnemies] = useState<number>(0);
 
-  // Sound mute toggle
+  // Sound effects mute toggle
   const handleToggleMute = useCallback(() => {
     const next = soundEngine.toggleMute();
     setIsMuted(next);
   }, []);
 
+  // Music mute toggle
+  const handleToggleMusic = useCallback(() => {
+    const next = musicEngine.toggleMute();
+    setIsMusicMuted(next);
+  }, []);
+
+  // Unlock browser audio contexts on first user gesture
+  useEffect(() => {
+    const unlockAudio = () => {
+      soundEngine.resumeAudio();
+      musicEngine.resumeAudio();
+      if (gameStatus === 'TITLE' && musicEngine.getCurrentTrack() === 'SILENCE') {
+        musicEngine.playTrack('TITLE');
+      }
+    };
+    window.addEventListener('pointerdown', unlockAudio, { once: false });
+    window.addEventListener('keydown', unlockAudio, { once: false });
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, [gameStatus]);
+
+  // Synchronize background music: Chỉ phát nhạc ở Sảnh chờ (Title), tắt hoàn toàn nhạc trong game
+  useEffect(() => {
+    prevGameStatusRef.current = gameStatus;
+
+    if (gameStatus === 'TITLE') {
+      musicEngine.playTrack('TITLE');
+    } else {
+      // Trong trận chiến: Tắt hoàn toàn nhạc nền theo yêu cầu, chỉ giữ lại âm thanh tác chiến chân thực
+      musicEngine.stop();
+    }
+  }, [gameStatus]);
 
 
-  // Stage clear handler - Campaign completes at Level 10, Survival continues wave-by-wave
+
+  // Stage clear handler - Campaign completes at Level 21, Survival continues wave-by-wave
   const handleStageClear = useCallback(() => {
     if (gameMode === 'BOSS_RUSH') {
       setGameStatus('VICTORY');
@@ -164,6 +202,8 @@ export default function App() {
 
       setCurrentStageIndex(stageIdx);
       setCurrentStageConfig(cfg);
+      // Dừng ngay nhạc nền sảnh chờ để chuyển sang nhạc chiến đấu mới
+      musicEngine.stop();
       setGameStatus('PLAYING');
 
       setTimeout(() => {
@@ -202,7 +242,7 @@ export default function App() {
     }, 50);
   }, [currentStageConfig, gameMode, controlMode, startEngineWithStage]);
 
-  // Next Stage in Campaign (Levels 1-10 -> Endless Survival Waves 11+) or Survival/Boss Rush
+  // Next Stage in Campaign (Levels 1-21 -> Endless Survival Waves 22+) or Survival/Boss Rush
   const handleNextStage = useCallback(() => {
     let nextIdx = currentStageIndex + 1;
     let nextCfg: StageConfig;
@@ -283,6 +323,8 @@ export default function App() {
       engineRef.current.destroy();
       engineRef.current = null;
     }
+    // Dừng ngay nhạc trận đấu trước khi về sảnh chính
+    musicEngine.stop();
     setGameStatus('TITLE');
   }, []);
 
@@ -317,16 +359,24 @@ export default function App() {
           e.preventDefault();
           handleTogglePause();
         }
+        return;
+      }
+
+      if (e.code === 'KeyM') {
+        e.preventDefault();
+        handleToggleMusic();
+        return;
       }
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [gameStatus, handleTogglePause, isGuideOpen, handleOpenGuide, handleCloseGuide]);
+  }, [gameStatus, handleTogglePause, handleToggleMusic, isGuideOpen, handleOpenGuide, handleCloseGuide]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       engineRef.current?.destroy();
+      musicEngine.stop();
     };
   }, []);
 
@@ -355,13 +405,15 @@ export default function App() {
           gameStatus === 'TITLE' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
         }`}
       >
-        {/* THANH TRẠNG THÁI TRÊN (CĂN GIỮA): MẠNG, CĂN CỨ, NÂNG CẤP, LEVEL, ĐỊCH, ĐIỂM, TẠM DỪNG */}
+        {/* THANH TRẠNG THÁI TRÊN (CĂN GIỮA): MẠNG, CĂN CỨ, NÂNG CẤP, LEVEL, ĐỊCH, ĐIỂM, TẠM DỪNG & NHẠC */}
         <GameHUD
           stats={stats}
           remainingEnemies={remainingEnemies}
           isPaused={gameStatus === 'PAUSED'}
           onTogglePause={handleTogglePause}
           onUpgradeBase={handleUpgradeBase}
+          isMusicMuted={isMusicMuted}
+          onToggleMusic={handleToggleMusic}
         />
 
         {/* MAP CỦA GAME: SÁT VIỀN 100%, ĐỘ CAO VÀ RỘNG TỐI ĐA TRÊN MÀN HÌNH */}
@@ -383,7 +435,7 @@ export default function App() {
         {/* THANH TRẠNG THÁI DƯỚI (CĂN GIỮA): TỐC ĐỘ, HỎA LỰC, PHÍM TẮT & KỶ LỤC */}
         <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
 
-        {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh, Điều khiển) */}
+        {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh SFX & BGM, Điều khiển) */}
         {gameStatus === 'PAUSED' && !isGuideOpen && (
           <PauseModal
             onResume={handleTogglePause}
@@ -391,6 +443,8 @@ export default function App() {
             onQuitToTitle={handleQuitToTitle}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
+            isMusicMuted={isMusicMuted}
+            onToggleMusic={handleToggleMusic}
             onOpenGuide={handleOpenGuide}
             weather={stats.weather}
             isWeatherEnabled={stats.isWeatherEnabled}
@@ -422,6 +476,8 @@ export default function App() {
             onStartGame={handleStartGame}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
+            isMusicMuted={isMusicMuted}
+            onToggleMusic={handleToggleMusic}
             highScore={stats.highScore}
             onOpenGuide={handleOpenGuide}
           />

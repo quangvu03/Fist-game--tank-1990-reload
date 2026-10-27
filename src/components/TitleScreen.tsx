@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { GameMode, ControlMode } from '../types/game';
-import { Volume2, VolumeX, Play, Shield, Skull, Compass, Award, BookOpen } from 'lucide-react';
+import { Volume2, VolumeX, Play, Shield, Skull, Compass, Award, BookOpen, Music } from 'lucide-react';
 import heroImage from '../assets/images/tank_battle_hero_1792246756619.jpg';
 
 interface TitleScreenProps {
   onStartGame: (mode: GameMode, controlMode: ControlMode, startStage?: number) => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  isMusicMuted?: boolean;
+  onToggleMusic?: () => void;
   highScore: number;
   onOpenGuide?: () => void;
 }
@@ -15,6 +17,8 @@ export function TitleScreen({
   onStartGame,
   isMuted,
   onToggleMute,
+  isMusicMuted = false,
+  onToggleMusic,
   highScore,
   onOpenGuide,
 }: TitleScreenProps) {
@@ -78,12 +82,32 @@ export function TitleScreen({
             </button>
           )}
 
+          {onToggleMusic && (
+            <button
+              onClick={onToggleMusic}
+              title={isMusicMuted ? 'Bật nhạc nền sảnh chờ (Phím M)' : 'Tắt nhạc nền sảnh chờ (Phím M)'}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded transition-colors cursor-pointer border ${
+                isMusicMuted
+                  ? 'bg-rose-950/70 text-rose-300 border-rose-800 hover:bg-rose-900/80'
+                  : 'bg-emerald-950/70 text-emerald-300 border-emerald-700 hover:bg-emerald-900/80'
+              }`}
+            >
+              <Music className={`w-3.5 h-3.5 ${!isMusicMuted ? 'text-emerald-400 animate-pulse' : 'text-rose-400'}`} />
+              <span>{isMusicMuted ? 'NHẠC SẢNH: TẮT' : 'NHẠC SẢNH: BẬT'}</span>
+            </button>
+          )}
+
           <button
             onClick={onToggleMute}
-            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded transition-colors cursor-pointer"
+            title={isMuted ? 'Bật âm thanh hiệu ứng (SFX)' : 'Tắt âm thanh hiệu ứng (SFX)'}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded transition-colors cursor-pointer border ${
+              isMuted
+                ? 'bg-rose-950/70 text-rose-300 border-rose-800 hover:bg-rose-900/80'
+                : 'bg-slate-900/80 text-slate-300 hover:text-white border-slate-800'
+            }`}
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
-            <span>{isMuted ? 'BẬT ÂM' : 'TẮT ÂM'}</span>
+            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            <span>{isMuted ? 'SFX: TẮT' : 'SFX: BẬT'}</span>
           </button>
         </div>
       </div>
@@ -174,11 +198,11 @@ export function TitleScreen({
                 Chiến Dịch
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 ml-auto">
-                10 LEVEL
+                21 LEVEL
               </span>
             </div>
             <p className="text-[11px] text-slate-300 line-clamp-3 leading-relaxed">
-              10 màn kinh điển độ khó tăng dần. Cho phép chọn level xuất kích từ 1 đến 10. Toàn thắng sau Level 10!
+              21 màn chiến dịch liên hoàn. Màn 1-10 là Khu Quân Sự (Đại Chiến Titan ở Màn 10). Màn 11-21 là Thảo Nguyên Đồng Cỏ Xanh với bãi cỏ rậm ngụy trang, đá hoa cương và đại chiến toàn thắng!
             </p>
           </button>
 
@@ -237,26 +261,46 @@ export function TitleScreen({
 
         {/* Stage Selector for Campaign */}
         {selectedMode === 'CAMPAIGN' && (
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-6 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-lg text-xs shadow-inner">
-            <span className="text-slate-300 font-semibold">Chọn level xuất kích:</span>
-            <div className="flex items-center gap-1.5">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setStageSelect(num)}
-                  className={`w-6 h-6 rounded font-mono font-bold transition-all cursor-pointer ${
-                    stageSelect === num
-                      ? 'bg-emerald-500 text-slate-950 shadow-md scale-110 font-black'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
+          <div className="flex flex-col items-center justify-center gap-2 mb-6 bg-slate-900/90 border border-slate-800/90 px-4 py-3 rounded-xl text-xs shadow-inner max-w-xl mx-auto w-full">
+            <div className="flex items-center justify-between w-full px-1">
+              <span className="text-slate-200 font-bold flex items-center gap-1.5">
+                <span>Chọn Level Xuất Kích:</span>
+                <span className="text-emerald-400 font-mono font-black text-sm">Màn {stageSelect}</span>
+              </span>
+              <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border bg-emerald-950/60 text-emerald-300 border-emerald-500/30">
+                {stageSelect >= 11 ? '🌿 Đồng Cỏ Xanh & Đá Núi' : '🏭 Khu Quân Sự & Đô Thị'}
+              </span>
             </div>
-            <span className="text-[10px] text-emerald-400/90 ml-1 font-mono">
-              (Level 10 kết thúc toàn thắng)
-            </span>
+
+            <div className="grid grid-cols-7 sm:grid-cols-11 gap-1.5 w-full mt-1">
+              {Array.from({ length: 21 }, (_, i) => i + 1).map((num) => {
+                const isMeadow = num >= 11;
+                const isSelected = stageSelect === num;
+                return (
+                  <button
+                    key={num}
+                    onClick={() => setStageSelect(num)}
+                    title={isMeadow ? `Level ${num}: Chiến Trường Đồng Cỏ Xanh & Đá Tảng` : `Level ${num}: Khu Quân Sự Đô Thị`}
+                    className={`h-7 rounded-md font-mono text-xs font-bold transition-all cursor-pointer flex items-center justify-center relative ${
+                      isSelected
+                        ? isMeadow
+                          ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30 scale-105 font-black ring-2 ring-emerald-300'
+                          : 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/30 scale-105 font-black ring-2 ring-sky-300'
+                        : isMeadow
+                        ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-700/40 hover:bg-emerald-900/60 hover:text-white'
+                        : 'bg-slate-800/80 text-slate-300 border border-slate-700/50 hover:bg-slate-700 hover:text-white'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between w-full text-[10px] text-slate-400 px-1 mt-0.5">
+              <span className="text-slate-400">Lv 1-10: Khu Quân Sự (Trùm Màn 10)</span>
+              <span className="text-emerald-400 font-semibold">Lv 11-21: Thảo Nguyên Đồng Cỏ (Toàn Thắng ở Lv 21)</span>
+            </div>
           </div>
         )}
 

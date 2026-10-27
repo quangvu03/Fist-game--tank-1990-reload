@@ -18,6 +18,7 @@ import {
   Gauge,
   Flame,
   Sparkles,
+  Music,
 } from 'lucide-react';
 
 interface GameGuideModalProps {
@@ -721,6 +722,10 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                     <span className="text-slate-300">Nâng cấp căn cứ</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-cyan-300 font-bold">M</kbd>
+                    <span className="text-slate-300">Bật/tắt nhạc sảnh (BGM)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-emerald-300 font-bold">H</kbd>
                     <span className="text-slate-300">Mở sổ tay tác chiến</span>
                   </div>
@@ -734,6 +739,10 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2 min-w-0">
                 <h4 className="font-bold text-white text-xs">CÁC NÚT CHỨC NĂNG TRÊN THANH CÔNG CỤ</h4>
                 <div className="space-y-2 text-[11px] text-slate-300">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-slate-800 text-amber-400 shrink-0"><Music className="w-3.5 h-3.5" /></div>
+                    <span className="break-words"><b>Nút Nhạc Sảnh (BGM):</b> Nằm ngay cạnh nút Tạm dừng (hoặc phím M), bật/tắt nhạc nền sảnh chờ (kiệt tác piano Beethoven êm ái). Trong trận chiến đã tắt toàn bộ nhạc nền để người chơi hoàn toàn tập trung vào âm thanh chiến xa, tiếng pháo bắn và tiếng bom nổ chân thực.</span>
+                  </div>
                   <div className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-slate-800 text-amber-300 shrink-0"><Sun className="w-3.5 h-3.5" /></div>
                     <span className="break-words"><b>Nút Thời Tiết:</b> Chuyển đổi giữa <i>Quang đãng</i> → <i>Mưa nhẹ</i> → <i>Tuyết rơi</i>.</span>

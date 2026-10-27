@@ -9,6 +9,7 @@ import {
   Sun,
   CloudRain,
   Snowflake,
+  Music,
 } from 'lucide-react';
 import { WeatherType } from '../types/game';
 
@@ -18,6 +19,8 @@ interface PauseModalProps {
   onQuitToTitle: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  isMusicMuted?: boolean;
+  onToggleMusic?: () => void;
   onOpenGuide: () => void;
   weather?: WeatherType;
   isWeatherEnabled?: boolean;
@@ -30,6 +33,8 @@ export function PauseModal({
   onQuitToTitle,
   isMuted,
   onToggleMute,
+  isMusicMuted = false,
+  onToggleMusic,
   onOpenGuide,
   weather = 'CLEAR',
   isWeatherEnabled = false,
@@ -96,15 +101,39 @@ export function PauseModal({
             THIẾT LẬP TRẬN ĐẤU
           </div>
 
-          {/* Nút Âm thanh */}
+          {/* Nút Nhạc nền (BGM) */}
+          {onToggleMusic && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Music className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-slate-300 text-xs">Nhạc nền sảnh chờ (BGM):</span>
+              </div>
+              <button
+                onClick={onToggleMusic}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                  isMusicMuted
+                    ? 'bg-red-950/60 text-red-400 border border-red-800/80 hover:bg-red-900/60'
+                    : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/80 hover:bg-emerald-900/60'
+                }`}
+              >
+                <Music className="w-3.5 h-3.5" />
+                <span>{isMusicMuted ? 'ĐANG TẮT' : 'ĐANG BẬT'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Nút Âm thanh hiệu ứng (SFX) */}
           <div className="flex items-center justify-between">
-            <span className="text-slate-300 text-xs">Âm thanh game:</span>
+            <div className="flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-slate-300 text-xs">Hiệu ứng âm thanh (SFX):</span>
+            </div>
             <button
               onClick={onToggleMute}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
                 isMuted
-                  ? 'bg-red-950/60 text-red-400 border border-red-800/80'
-                  : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/80'
+                  ? 'bg-red-950/60 text-red-400 border border-red-800/80 hover:bg-red-900/60'
+                  : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/80 hover:bg-emerald-900/60'
               }`}
             >
               {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}

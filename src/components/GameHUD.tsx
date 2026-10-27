@@ -7,6 +7,7 @@ import {
   Castle,
   Skull,
   Crosshair,
+  Music,
 } from 'lucide-react';
 import { GameStats, PlayerCombatStats } from '../types/game';
 
@@ -16,6 +17,8 @@ interface GameHUDProps {
   isPaused: boolean;
   onTogglePause: () => void;
   onUpgradeBase: () => void;
+  isMusicMuted?: boolean;
+  onToggleMusic?: () => void;
 }
 
 export function GameHUD({
@@ -24,6 +27,8 @@ export function GameHUD({
   isPaused,
   onTogglePause,
   onUpgradeBase,
+  isMusicMuted = false,
+  onToggleMusic,
 }: GameHUDProps) {
   const isSurvival = stats.gameMode === 'SURVIVAL';
 
@@ -178,6 +183,24 @@ export function GameHUD({
             </>
           )}
         </button>
+
+        {/* 9. Nút Tắt/Bật Nhạc Sảnh (Bên cạnh nút Tạm Dừng) */}
+        {onToggleMusic && (
+          <button
+            onClick={onToggleMusic}
+            title={isMusicMuted ? 'Bật nhạc nền sảnh chờ (Phím M)' : 'Tắt nhạc nền sảnh chờ (Phím M)'}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black tracking-wide transition-all cursor-pointer shadow-sm border shrink-0 ${
+              isMusicMuted
+                ? 'bg-rose-950/70 text-rose-300 border-rose-800 hover:bg-rose-900/80'
+                : 'bg-emerald-950/70 text-emerald-300 border-emerald-700 hover:bg-emerald-900/80 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+            }`}
+          >
+            <Music className={`w-3.5 h-3.5 shrink-0 ${!isMusicMuted ? 'text-emerald-400 animate-pulse' : 'text-rose-400'}`} />
+            <span className="font-mono text-[9px] font-black">
+              {isMusicMuted ? 'NHẠC SẢNH: TẮT' : 'NHẠC SẢNH: BẬT'}
+            </span>
+          </button>
+        )}
       </div>
     </header>
   );
@@ -210,7 +233,7 @@ export function GameFooter({ highScore, combatStats }: GameFooterProps) {
         )}
 
         <div className="flex items-center gap-2 border-slate-700 sm:border-l sm:pl-3">
-          <span>WASD: Lái · Space: Bắn · <b>U: Nâng Cấp Căn Cứ</b> · <b>P: Tạm Dừng / Sổ Tay</b></span>
+          <span>WASD: Lái · Space: Bắn · <b>U: Nâng Cấp</b> · <b>P: Tạm Dừng</b> · <b>M: Bật/Tắt Nhạc</b></span>
           <span>·</span>
           <span>
             Kỷ lục: <b className="text-amber-300 font-mono">{highScore.toLocaleString()}</b>

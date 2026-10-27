@@ -1398,18 +1398,9 @@ export class GameEngine {
       }
     }
 
-    // Check bush entry status and show tactical notification
+    // Check bush entry status (no text notification needed)
     if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
-      const inBush = this.isTankInBush(this.player);
-      if (inBush && !this.wasPlayerInBush) {
-        this.addFloatText(
-          this.player.x + this.player.width / 2,
-          this.player.y - 14,
-          '🌿 TẦM NHÌN NÚP BỤI (BUSH STEALTH)',
-          '#4ade80'
-        );
-      }
-      this.wasPlayerInBush = inBush;
+      this.wasPlayerInBush = this.isTankInBush(this.player);
     }
   }
 
@@ -1629,7 +1620,7 @@ export class GameEngine {
       // If player is concealed by bushes from enemy's perspective, enemy cannot target player
       const playerInBush = this.isTankInBush(this.player);
       const enemyInBush = this.isTankInBush(enemy);
-      const isConcealed = (playerInBush && !enemyInBush) || this.hasBushOcclusion(eCenterX, eCenterY, pCenterX, pCenterY, enemyInBush);
+      const isConcealed = playerInBush && !enemyInBush;
 
       if (!isConcealed) {
         if (enemy.dir === 'UP' && Math.abs(eCenterX - pCenterX) < TANK_SIZE && eCenterY > pCenterY) return true;
@@ -2036,13 +2027,7 @@ export class GameEngine {
     soundEngine.playBarrelExplosion();
     // USER RULE: Khi các thùng bị nổ không cho hiệu ứng rung cả màn hình
 
-    if (chainDepth === 0) {
-      if (detonatedByPlayer) {
-        this.addFloatText(barrelX, barrelY - 14, '💥 THÙNG NỔ KÍCH HOẠT!', '#f97316');
-      } else {
-        this.addFloatText(barrelX, barrelY - 14, '💥 THÙNG BỊ ĐỊCH BẮN NỔ!', '#ef4444');
-      }
-    }
+    // USER RULE: Không hiện thông báo nổ thùng
 
     const BLAST_RADIUS = 92; // Blast radius covers surrounding ~3.5 tiles
 
@@ -2102,13 +2087,11 @@ export class GameEngine {
           } else {
             particleSystem.emitTankHit(eCx, enemy.y + enemy.height / 2, 0, -40, enemy.color);
             soundEngine.playHitMetal();
-            this.addFloatText(eCx, enemy.y - 10, '-6 HP (SÓNG NỔ)!', '#f97316');
           }
         } else {
           // Regular enemy tanks blow up instantly!
           enemy.hp = 0;
           this.handleEnemyDestroyed(enemy, true);
-          this.addFloatText(eCx, enemy.y - 10, '💥 NỔ TUNG!', '#facc15');
         }
       }
 
@@ -2129,7 +2112,7 @@ export class GameEngine {
           // Shield deflects blast wave
           particleSystem.emitSteelImpact(pCx, pCy, 0, -20, false);
           soundEngine.playHitMetal();
-          this.addFloatText(pCx, this.player.y - 12, '🛡️ KHIÊN CHỐNG NỔ!', '#38bdf8');
+          // Không hiện thông báo khiên chống nổ
         } else {
           // Standing too close to exploding barrel: deduct HP!
           const damage = pDist <= BLAST_RADIUS * 0.45 ? 2 : 1;
@@ -2142,7 +2125,7 @@ export class GameEngine {
           } else {
             particleSystem.emitTankHit(pCx, pCy, 0, -30, '#ef4444');
             soundEngine.playHitMetal();
-            this.addFloatText(this.player.x + 10, this.player.y - 10, `-${damage} HP (SÓNG NỔ)!`, '#ef4444');
+            this.addFloatText(this.player.x + 10, this.player.y - 10, `-${damage} HP`, '#ef4444');
           }
         }
       }
@@ -2611,18 +2594,12 @@ export class GameEngine {
   }
 
   public isTankInBush(tank: Tank): boolean {
-    const inset = 3;
-    const startCol = Math.max(0, Math.floor((tank.x + inset) / TILE_SIZE));
-    const endCol = Math.min(this.gridCols - 1, Math.floor((tank.x + tank.width - 1 - inset) / TILE_SIZE));
-    const startRow = Math.max(0, Math.floor((tank.y + inset) / TILE_SIZE));
-    const endRow = Math.min(this.gridRows - 1, Math.floor((tank.y + tank.height - 1 - inset) / TILE_SIZE));
-
-    for (let r = startRow; r <= endRow; r++) {
-      for (let c = startCol; c <= endCol; c++) {
-        if (this.grid[r]?.[c] === TileType.BUSH) {
-          return true;
-        }
-      }
+    const cx = tank.x + tank.width / 2;
+    const cy = tank.y + tank.height / 2;
+    const col = Math.floor(cx / TILE_SIZE);
+    const row = Math.floor(cy / TILE_SIZE);
+    if (row >= 0 && row < this.gridRows && col >= 0 && col < this.gridCols) {
+      return this.grid[row][col] === TileType.BUSH;
     }
     return false;
   }
@@ -2666,49 +2643,25 @@ export class GameEngine {
       return true;
     }
 
-    const playerInBush = this.revealedBushTileIndices.size > 0;
+    // 1. If enemy is NOT inside a bush: ALWAYS 100% visible, completely stable, NO FLICKERING!
     const enemyInBush = this.isTankInBush(enemy);
-
-    const pCx = this.player.x + this.player.width / 2;
-    const pCy = this.player.y + this.player.height / 2;
-    const eCx = enemy.x + enemy.width / 2;
-    const eCy = enemy.y + enemy.height / 2;
-
-    // 1. If enemy is inside a bush:
-    if (enemyInBush) {
-      if (!playerInBush) {
-        return false; // Player is not in bush -> cannot see enemy hidden in bush
-      }
-      // Player is in bush -> only sees enemy if enemy is inside the player's connected revealed bush cluster
-      const inset = 3;
-      const startCol = Math.max(0, Math.floor((enemy.x + inset) / TILE_SIZE));
-      const endCol = Math.min(this.gridCols - 1, Math.floor((enemy.x + enemy.width - 1 - inset) / TILE_SIZE));
-      const startRow = Math.max(0, Math.floor((enemy.y + inset) / TILE_SIZE));
-      const endRow = Math.min(this.gridRows - 1, Math.floor((enemy.y + enemy.height - 1 - inset) / TILE_SIZE));
-
-      let inRevealedCluster = false;
-      for (let r = startRow; r <= endRow; r++) {
-        for (let c = startCol; c <= endCol; c++) {
-          if (this.grid[r]?.[c] === TileType.BUSH && this.isBushTileRevealedToPlayer(c, r)) {
-            inRevealedCluster = true;
-            break;
-          }
-        }
-        if (inRevealedCluster) break;
-      }
-
-      if (!inRevealedCluster) {
-        return false; // Enemy is in a bush cluster disconnected from player -> hidden!
-      }
+    if (!enemyInBush) {
       return true;
     }
 
-    // 2. Enemy is behind a bush from player's view:
-    if (this.hasBushOcclusion(pCx, pCy, eCx, eCy, playerInBush)) {
-      return false; // Bush blocks line of sight
+    // 2. If enemy IS inside a bush:
+    // If player is not in any bush, player cannot see enemy hidden in bush
+    if (this.revealedBushTileIndices.size === 0) {
+      return false;
     }
 
-    return true;
+    // Player is in a bush: can ONLY see enemy if enemy is inside player's connected revealed bush cluster
+    const eCx = enemy.x + enemy.width / 2;
+    const eCy = enemy.y + enemy.height / 2;
+    const eCol = Math.floor(eCx / TILE_SIZE);
+    const eRow = Math.floor(eCy / TILE_SIZE);
+
+    return this.isBushTileRevealedToPlayer(eCol, eRow);
   }
 
   private addCameraShake(amt: number) {

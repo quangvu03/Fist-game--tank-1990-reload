@@ -1,10 +1,12 @@
 import { StageConfig, EnemyType, TileType } from '../types/game';
 import { STAGE_COLS, GRID_COLS, GRID_ROWS, BASE_COORD } from './constants';
 
+export const STAGE_ROWS = 26; // Stage authoring blueprint height
+
 // Helper to create an empty 26x26 core stage blueprint grid
 function createEmptyGrid(): number[][] {
   const grid: number[][] = [];
-  for (let r = 0; r < GRID_ROWS; r++) {
+  for (let r = 0; r < STAGE_ROWS; r++) {
     grid[r] = new Array(STAGE_COLS).fill(TileType.EMPTY);
   }
   return grid;
@@ -1186,10 +1188,10 @@ export const CAMPAIGN_STAGES: StageConfig[] = [
   makeStage21(),
 ];
 
-// Generate Massive Strategic Warzone for Survival Mode (56 cols x 40 rows, expandable, NO BASE)
+// Generate Massive Strategic Warzone for Survival Mode (64 cols x 36 rows, 16:9 widescreen, NO BASE)
 export function generateSurvivalStage(wave: number, stageId: number = wave): StageConfig {
-  const rows = 40; // Massive expanded height
-  const cols = 56; // Massive expanded width
+  const rows = 36; // 16:9 widescreen height (36 * 26 = 936px)
+  const cols = 64; // 16:9 widescreen width (64 * 26 = 1664px -> 64 / 36 = 16:9)
   const grid: number[][] = [];
   for (let r = 0; r < rows; r++) {
     grid[r] = new Array(cols).fill(TileType.EMPTY);
@@ -1200,49 +1202,48 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
 
   // 1. Water Ponds with Wide Bridges (open navigation - tanks will never get trapped)
   // Northwest Pond
-  for (let r = 8; r <= 12; r++) {
-    for (let c = 12; c <= 16; c++) {
+  for (let r = 7; r <= 11; r++) {
+    for (let c = 14; c <= 18; c++) {
       grid[r][c] = TileType.WATER;
     }
   }
   // Northeast Pond
-  for (let r = 8; r <= 12; r++) {
-    for (let c = 39; c <= 43; c++) {
+  for (let r = 7; r <= 11; r++) {
+    for (let c = 45; c <= 49; c++) {
       grid[r][c] = TileType.WATER;
     }
   }
   // Southwest Pond
-  for (let r = 27; r <= 31; r++) {
-    for (let c = 12; c <= 16; c++) {
+  for (let r = 24; r <= 28; r++) {
+    for (let c = 14; c <= 18; c++) {
       grid[r][c] = TileType.WATER;
     }
   }
   // Southeast Pond
-  for (let r = 27; r <= 31; r++) {
-    for (let c = 39; c <= 43; c++) {
+  for (let r = 24; r <= 28; r++) {
+    for (let c = 45; c <= 49; c++) {
       grid[r][c] = TileType.WATER;
     }
   }
 
   // Tactical Explosive Fuel Barrels (Thùng nhiên liệu nổ)
-  // Replaces the old ice surfaces with high-impact strategic explosive barrel caches
   const barrelCaches = [
     // West tactical depot cache
-    [19, 9], [19, 10], [20, 9], [20, 10],
+    [17, 10], [17, 11], [18, 10], [18, 11],
     // East tactical depot cache
-    [19, 45], [19, 46], [20, 45], [20, 46],
+    [17, 52], [17, 53], [18, 52], [18, 53],
     // Northwest chokepoint cache
-    [10, 18], [11, 18],
+    [9, 21], [10, 21],
     // Northeast chokepoint cache
-    [10, 37], [11, 37],
+    [9, 42], [10, 42],
     // Southwest ambush cache
-    [29, 18], [30, 18],
+    [26, 21], [27, 21],
     // Southeast ambush cache
-    [29, 37], [30, 37],
+    [26, 42], [27, 42],
     // North center crossroads cache
-    [10, 27], [10, 28],
+    [8, 31], [8, 32],
     // South center crossroads cache
-    [29, 27], [29, 28],
+    [27, 31], [27, 32],
   ];
 
   for (const [br, bc] of barrelCaches) {
@@ -1251,8 +1252,8 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
 
   // 2. Tactical Fortified Bunkers (isolated 2x2 pillboxes with wide clearance around them)
   const pillboxes = [
-    [6, 6], [6, 48], [32, 6], [32, 48],
-    [18, 16], [18, 38], [8, 27], [30, 27],
+    [5, 6], [5, 56], [29, 6], [29, 56],
+    [16, 18], [16, 44], [7, 31], [28, 31],
   ];
   for (const [br, bc] of pillboxes) {
     grid[br][bc] = TileType.STEEL;
@@ -1263,17 +1264,17 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
 
   // 3. Destructible Wooden Supply Crate Clusters & Brick Walls (can be blasted through by both player and AI tanks)
   const seed = wave * 3041 + 137;
-  for (let r = 4; r < rows - 4; r += 2) {
-    for (let c = 4; c < cols - 4; c += 2) {
-      // Keep central staging area (cols 22..33, rows 16..24) completely clear
-      if (c >= 22 && c <= 33 && r >= 16 && r <= 24) continue;
+  for (let r = 3; r < rows - 3; r += 2) {
+    for (let c = 3; c < cols - 3; c += 2) {
+      // Keep central staging area (cols 26..37, rows 14..22) completely clear
+      if (c >= 26 && c <= 37 && r >= 14 && r <= 22) continue;
       // Do not overwrite water or steel
       if (grid[r][c] !== TileType.EMPTY) continue;
 
       const val = Math.sin(seed + r * 17 + c * 23);
       if (val > 0.42) {
         grid[r][c] = TileType.BRICK;
-        if (c + 1 < cols - 4 && grid[r][c + 1] === TileType.EMPTY) {
+        if (c + 1 < cols - 3 && grid[r][c + 1] === TileType.EMPTY) {
           grid[r][c + 1] = TileType.BRICK;
         }
       } else if (val < -0.82) {
@@ -1284,10 +1285,10 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
 
   // 4. Strategic Foliage / Bushes for tactical ambush
   const bushSectors = [
-    { r1: 5, r2: 8, c1: 20, c2: 24 },
-    { r1: 5, r2: 8, c1: 31, c2: 35 },
-    { r1: 31, r2: 34, c1: 20, c2: 24 },
-    { r1: 31, r2: 34, c1: 31, c2: 35 },
+    { r1: 4, r2: 7, c1: 24, c2: 28 },
+    { r1: 4, r2: 7, c1: 35, c2: 39 },
+    { r1: 28, r2: 31, c1: 24, c2: 28 },
+    { r1: 28, r2: 31, c1: 35, c2: 39 },
   ];
   for (const b of bushSectors) {
     for (let r = b.r1; r <= b.r2; r++) {
@@ -1301,20 +1302,20 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
 
   // 5. GUARANTEE ALL ENEMY SPAWN ZONES ARE 100% EMPTY (Zero stuck tanks!)
   const spawnCoordinates = [
-    { r: 3, c: 6 },
-    { r: 3, c: 18 },
-    { r: 3, c: 28 },
-    { r: 3, c: 38 },
-    { r: 3, c: 49 },
-    { r: rows - 4, c: 6 },
-    { r: rows - 4, c: 18 },
-    { r: rows - 4, c: 28 },
-    { r: rows - 4, c: 38 },
-    { r: rows - 4, c: 49 },
-    { r: 14, c: 3 },
-    { r: 25, c: 3 },
-    { r: 14, c: cols - 4 },
-    { r: 25, c: cols - 4 },
+    { r: 2, c: 7 },
+    { r: 2, c: 20 },
+    { r: 2, c: 32 },
+    { r: 2, c: 44 },
+    { r: 2, c: 56 },
+    { r: rows - 3, c: 7 },
+    { r: rows - 3, c: 20 },
+    { r: rows - 3, c: 32 },
+    { r: rows - 3, c: 44 },
+    { r: rows - 3, c: 56 },
+    { r: 12, c: 3 },
+    { r: 23, c: 3 },
+    { r: 12, c: cols - 4 },
+    { r: 23, c: cols - 4 },
   ];
 
   for (const sp of spawnCoordinates) {
@@ -1329,9 +1330,9 @@ export function generateSurvivalStage(wave: number, stageId: number = wave): Sta
     }
   }
 
-  // Also guarantee player staging ground (cols 24..31, rows 17..22) is completely empty
-  for (let r = 16; r <= 23; r++) {
-    for (let c = 23; c <= 32; c++) {
+  // Also guarantee player staging ground (cols 27..36, rows 15..21) is completely empty
+  for (let r = 15; r <= 21; r++) {
+    for (let c = 27; c <= 36; c++) {
       grid[r][c] = TileType.EMPTY;
     }
   }

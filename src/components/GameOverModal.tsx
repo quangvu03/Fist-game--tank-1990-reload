@@ -61,17 +61,29 @@ export function GameOverModal({
         </div>
 
         {/* Score & Record Cluster */}
-        <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg p-3.5 mb-5">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>TỔNG ĐIỂM CHIẾN DỊCH</span>
-            {isNewHighScore && (
-              <span className="flex items-center gap-1 text-[11px] text-amber-400 font-bold">
-                <Award className="w-3.5 h-3.5" /> KỶ LỤC MỚI!
-              </span>
-            )}
+        <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg p-3.5 mb-5 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <span>TỔNG ĐIỂM</span>
+              {isNewHighScore && (
+                <span className="flex items-center gap-1 text-[11px] text-amber-400 font-bold">
+                  <Award className="w-3.5 h-3.5" /> KỶ LỤC!
+                </span>
+              )}
+            </div>
+            <div className="font-mono text-2xl font-bold tabular-nums text-amber-300">
+              {stats.score.toLocaleString()}
+            </div>
           </div>
-          <div className="font-mono text-2xl font-bold tabular-nums text-amber-300">
-            {stats.score.toLocaleString()}
+
+          <div className="text-right border-l border-slate-800/80 pl-4">
+            <div className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-0.5">XU VÁN NÀY</div>
+            <div className="font-mono text-lg font-black text-yellow-300 tabular-nums">
+              +{(stats.stageCoins || 0).toLocaleString()}
+            </div>
+            <div className="text-[10px] text-slate-400 font-mono mt-0.5" title="Tổng tiền tích lũy hiện có trong kho">
+              Kho: {(stats.coins || 0).toLocaleString()}
+            </div>
           </div>
         </div>
 

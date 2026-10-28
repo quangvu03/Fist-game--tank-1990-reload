@@ -1,21 +1,21 @@
 import { EnemyType, Direction, TileType } from '../types/game';
 
 export const STAGE_COLS = 26; // Stage authoring blueprint width
-export const GRID_COLS = 34; // Expanded widescreen battlefield columns (wide layout)
-export const GRID_ROWS = 26; // Kept at 26 rows so vertical height fits cleanly on screen
-export const TILE_SIZE = 26; // 26 * 26 = 676px height, 34 * 26 = 884px width
-export const CANVAS_WIDTH = GRID_COLS * TILE_SIZE; // 884px
-export const CANVAS_HEIGHT = GRID_ROWS * TILE_SIZE; // 676px
-export const CANVAS_SIZE = CANVAS_HEIGHT; // 676px backwards compatibility
-
-
+export const GRID_COLS = 48; // Standard 16:9 widescreen battlefield columns (48 / 27 = 16:9)
+export const GRID_ROWS = 27; // Standard 16:9 widescreen rows (27 * 26 = 702px, 48 * 26 = 1248px)
+export const TILE_SIZE = 26; // 26px tile size
+export const CANVAS_WIDTH = GRID_COLS * TILE_SIZE; // 1248px (16:9 aspect ratio)
+export const CANVAS_HEIGHT = GRID_ROWS * TILE_SIZE; // 702px (16:9 aspect ratio)
+export const CANVAS_SIZE = CANVAS_HEIGHT; // backwards compatibility
 
 export const TANK_SIZE = 26;
 export const BULLET_RADIUS = 3.5;
 export const MISSILE_RADIUS = 5.5;
 
-export const BASE_COORD = { col: 16, row: 24 }; // 2x2 base footprint at bottom center (cols 16 & 17, rows 24 & 25)
-export const BASE_CENTER = { x: 17 * TILE_SIZE, y: 24.8 * TILE_SIZE }; // 442px (exactly 884 / 2)
+// Base footprint: 2x2 base at bottom center (cols 23 & 24, rows 25 & 26 - flush against bottom border, zero gap behind)
+// Total 48 cols: 23 cols to left (0..22), 2 cols for base (23..24), 23 cols to right (25..47) -> Exactly centered!
+export const BASE_COORD = { col: 23, row: 25 };
+export const BASE_CENTER = { x: 24 * TILE_SIZE, y: 25.8 * TILE_SIZE }; // 624px (exactly 1248 / 2)
 export const BASE_SHIELD_RADIUS = 58;
 
 export interface BaseTierConfig {

@@ -13,6 +13,8 @@ import {
   Crown,
   Coins,
   Store,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import heroImage from '../assets/images/tank_battle_hero_1792246756619.jpg';
 import { shopManager } from '../game/shopManager';
@@ -26,6 +28,8 @@ interface TitleScreenProps {
   highScore: number;
   onOpenGuide?: () => void;
   onOpenShop?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export function TitleScreen({
@@ -37,6 +41,8 @@ export function TitleScreen({
   highScore,
   onOpenGuide,
   onOpenShop,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: TitleScreenProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode>('CAMPAIGN');
   const [stageSelect, setStageSelect] = useState<number>(1);
@@ -94,12 +100,13 @@ export function TitleScreen({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Coin Wallet */}
+          {/* Coin Wallet (Tổng tiền trong game) */}
           <div
-            className="flex items-center gap-1.5 text-xs text-yellow-300 font-mono tabular-nums bg-slate-900/90 border border-yellow-500/50 px-2.5 py-1 rounded-lg"
-            title={`Số tiền xu quân sự hiện có: ${profile.coins.toLocaleString()} xu`}
+            className="flex items-center gap-1.5 text-xs text-yellow-300 font-mono tabular-nums bg-slate-900/90 border border-yellow-500/50 px-2.5 py-1 rounded-lg shadow-inner"
+            title={`Kho tiền xu quân sự hiện có: ${profile.coins.toLocaleString()} xu`}
           >
             <Coins className="w-3.5 h-3.5 text-yellow-400 shrink-0 animate-pulse" />
+            <span className="text-[10px] text-yellow-400/90 font-bold hidden sm:inline">KHO TIỀN:</span>
             <span className="font-bold">{profile.coins.toLocaleString()}</span>
           </div>
 
@@ -160,6 +167,16 @@ export function TitleScreen({
             {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
             <span className="hidden md:inline">{isMuted ? 'SFX: TẮT' : 'SFX: BẬT'}</span>
           </button>
+
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 active:scale-95 transition-all cursor-pointer"
+            >
+              {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
       </header>
 

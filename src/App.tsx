@@ -25,9 +25,55 @@ export default function App() {
   const [isMusicMuted, setIsMusicMuted] = useState<boolean>(() => musicEngine.getMuted());
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isShopOpen, setIsShopOpen] = useState<boolean>(false);
+  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(false);
+  const [showTouchControls, setShowTouchControls] = useState<boolean>(true);
+  const [isPortraitNoticeVisible, setIsPortraitNoticeVisible] = useState<boolean>(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const wasPlayingBeforeGuideRef = useRef<boolean>(false);
   const wasPlayingBeforeShopRef = useRef<boolean>(false);
   const prevGameStatusRef = useRef<GameStatus>('TITLE');
+
+  // Monitor device orientation, touch capabilities and fullscreen state for 16:9 edge-to-edge experience
+  useEffect(() => {
+    const handleDeviceAndOrientation = () => {
+      const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const isCompactHeight = window.innerHeight <= 560;
+      setIsTouchDevice(hasTouch);
+      // Chế độ xoay ngang mobile: màn hình nằm ngang và có cảm ứng hoặc chiều cao nhỏ <= 560px
+      setIsMobileLandscape(isLandscape && (hasTouch || isCompactHeight));
+      const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth < 768;
+      setIsPortraitNoticeVisible(isPortrait && hasTouch);
+    };
+    handleDeviceAndOrientation();
+    window.addEventListener('resize', handleDeviceAndOrientation);
+    window.addEventListener('orientationchange', handleDeviceAndOrientation);
+
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+
+    return () => {
+      window.removeEventListener('resize', handleDeviceAndOrientation);
+      window.removeEventListener('orientationchange', handleDeviceAndOrientation);
+      document.removeEventListener('fullscreenchange', onFsChange);
+    };
+  }, []);
+
+  // HTML5 Fullscreen API toggle
+  const handleToggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  }, []);
 
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
   const [currentStageConfig, setCurrentStageConfig] = useState<StageConfig>(CAMPAIGN_STAGES[0]);
@@ -36,6 +82,7 @@ export default function App() {
     score: 0,
     highScore: 0,
     coins: 0,
+    stageCoins: 0,
     lives: 3,
     playerHp: 3,
     playerMaxHp: 3,
@@ -445,13 +492,33 @@ export default function App() {
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none font-sans p-0 m-0">
-      {/* 1. Màn chơi chính: THANH TRÊN VÀ DƯỚI ĐỀU CĂN GIỮA, MAP SÁT VIỀN 100% */}
+      {/* 1. Màn chơi chính: Khi xoay ngang mobile -> tràn viền 100% full screen, các nút bấm đè lên chiến trường */}
       <div
-        className={`relative z-10 flex flex-col w-full h-full overflow-hidden transition-opacity duration-200 ${
+        className={`relative z-10 ${
+          isMobileLandscape ? 'block' : 'flex flex-col'
+        } w-full h-full overflow-hidden transition-opacity duration-200 ${
           gameStatus === 'TITLE' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
         }`}
       >
-        {/* THANH TRẠNG THÁI TRÊN (CĂN GIỮA): MẠNG, CĂN CỨ, NÂNG CẤP, LEVEL, ĐỊCH, ĐIỂM, TẠM DỪNG & NHẠC */}
+        {/* Banner nhắc xoay ngang điện thoại nếu đang ở chế độ dọc (portrait) */}
+        {isPortraitNoticeVisible && (
+          <div className="absolute top-0 inset-x-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black px-3 py-1 text-[11px] flex items-center justify-between shadow-lg shrink-0 z-40">
+            <span className="flex items-center gap-1.5">
+              <span className="text-sm">🔄</span>
+              <span>Xoay ngang điện thoại để trải nghiệm toàn màn hình 16:9 tốt nhất!</span>
+            </span>
+            <button
+              onClick={() => setIsPortraitNoticeVisible(false)}
+              className="text-xs bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 rounded px-1.5 py-0.5 ml-2 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* THANH TRẠNG THÁI TRÊN (GameHUD):
+            - Mobile xoay ngang: Thanh nổi bán trong suốt đè lên đỉnh chiến trường (không đẩy canvas xuống)
+            - Desktop: Thanh cố định chuẩn */}
         <GameHUD
           stats={stats}
           remainingEnemies={remainingEnemies}
@@ -462,26 +529,43 @@ export default function App() {
           onToggleMusic={handleToggleMusic}
           onOpenShop={handleOpenShop}
           onUseSupportItem={handleUseSupportItem}
+          isMobileLandscape={isMobileLandscape}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={handleToggleFullscreen}
         />
 
-        {/* MAP CỦA GAME: SÁT VIỀN 100%, ĐỘ CAO VÀ RỘNG TỐI ĐA TRÊN MÀN HÌNH */}
-        <div className="relative flex-1 w-full min-h-0 flex items-stretch justify-stretch overflow-hidden bg-slate-950">
+        {/* CHIẾN TRƯỜNG CỦA GAME (CANVAS):
+            - Mobile xoay ngang: absolute inset-0 w-full h-full (toàn màn hình 100%, tỷ lệ 16:9 chuẩn)
+            - Desktop: relative flex-1 w-full min-h-0 */}
+        <div
+          className={`${
+            isMobileLandscape ? 'absolute inset-0' : 'relative flex-1'
+          } w-full min-h-0 flex items-center justify-center overflow-hidden bg-slate-950`}
+        >
           <canvas
             ref={canvasRef}
-            className="w-full h-full block cursor-crosshair select-none [image-rendering:pixelated]"
+            className="w-full h-full block cursor-crosshair select-none"
           />
 
-          {/* Phím ảo điều khiển cảm ứng cho di động/máy tính bảng */}
-          <div className="md:hidden absolute bottom-2 left-2 right-2 pointer-events-none z-20 flex justify-between">
+          {/* Phím ảo điều khiển cảm ứng: ĐÈ LÊN CHIẾN TRƯỜNG, NÚT NHỎ GỌN BÁN TRONG SUỐT KHÔNG CHE TẦM NHÌN */}
+          {(isTouchDevice || showTouchControls) && (
             <TouchControls
               onDirectionInput={handleVirtualDirection}
               onFireInput={handleVirtualFire}
+              onUseSupportItem={handleUseSupportItem}
+              onUpgradeBase={handleUpgradeBase}
+              canUpgradeBase={stats.canUpgradeBase}
+              supportInventory={stats.supportInventory}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreen}
             />
-          </div>
+          )}
         </div>
 
-        {/* THANH TRẠNG THÁI DƯỚI (CĂN GIỮA): TỐC ĐỘ, HỎA LỰC, PHÍM TẮT & KỶ LỤC */}
-        <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
+        {/* THANH TRẠNG THÁI DƯỚI: Ẩn trên mobile xoay ngang để chiến trường chiếm 100% chiều cao */}
+        {!isMobileLandscape && (
+          <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
+        )}
 
         {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh SFX & BGM, Điều khiển, Cửa hàng) */}
         {gameStatus === 'PAUSED' && !isGuideOpen && !isShopOpen && (
@@ -498,6 +582,8 @@ export default function App() {
             weather={stats.weather}
             isWeatherEnabled={stats.isWeatherEnabled}
             onToggleWeather={handleToggleWeather}
+            showTouchControls={showTouchControls}
+            onToggleTouchControls={() => setShowTouchControls((prev) => !prev)}
           />
         )}
 
@@ -531,6 +617,8 @@ export default function App() {
             highScore={stats.highScore}
             onOpenGuide={handleOpenGuide}
             onOpenShop={handleOpenShop}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreen}
           />
         </div>
       )}

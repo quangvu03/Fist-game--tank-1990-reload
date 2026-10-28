@@ -80,11 +80,13 @@ export class GameEngine {
   public floatTexts: FloatText[] = [];
   private emergencyRepairUsedThisLife: boolean = false;
 
-  // Spawning (Left flank, Center, Right flank across 34 columns)
+  // Spawning (Left flank, Center, Right flank across 48 widescreen columns)
   private spawnPoints = [
-    { x: 1 * TILE_SIZE, y: 1 * TILE_SIZE },
-    { x: 16 * TILE_SIZE, y: 1 * TILE_SIZE },
-    { x: 31 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 2 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 13 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 23 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 34 * TILE_SIZE, y: 1 * TILE_SIZE },
+    { x: 45 * TILE_SIZE, y: 1 * TILE_SIZE },
   ];
   private nextSpawnIndex: number = 0;
   private spawnCooldown: number = 1.0;
@@ -297,6 +299,7 @@ export class GameEngine {
     this.canvasHeight = CANVAS_HEIGHT;
     this.baseCoord = BASE_COORD;
     this.baseCenter = BASE_CENTER;
+    this.stats.stageCoins = 0;
 
     if (this.gameMode === 'SURVIVAL') {
       // Massive Survival battlefield (56 cols x 40 rows)
@@ -321,22 +324,22 @@ export class GameEngine {
         }
       }
 
-      // Symmetrical & perimeter tactical spawn points across large survival map (guaranteed clear zones)
+      // Symmetrical & perimeter tactical spawn points across large survival map (64x36, 16:9)
       this.spawnPoints = [
-        { x: 6 * TILE_SIZE, y: 3 * TILE_SIZE },
-        { x: 18 * TILE_SIZE, y: 3 * TILE_SIZE },
-        { x: 28 * TILE_SIZE, y: 3 * TILE_SIZE },
-        { x: 38 * TILE_SIZE, y: 3 * TILE_SIZE },
-        { x: 49 * TILE_SIZE, y: 3 * TILE_SIZE },
-        { x: 6 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
-        { x: 18 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
-        { x: 28 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
-        { x: 38 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
-        { x: 49 * TILE_SIZE, y: (this.gridRows - 4) * TILE_SIZE },
-        { x: 3 * TILE_SIZE, y: 14 * TILE_SIZE },
-        { x: 3 * TILE_SIZE, y: 25 * TILE_SIZE },
-        { x: (this.gridCols - 4) * TILE_SIZE, y: 14 * TILE_SIZE },
-        { x: (this.gridCols - 4) * TILE_SIZE, y: 25 * TILE_SIZE },
+        { x: 7 * TILE_SIZE, y: 2 * TILE_SIZE },
+        { x: 20 * TILE_SIZE, y: 2 * TILE_SIZE },
+        { x: 32 * TILE_SIZE, y: 2 * TILE_SIZE },
+        { x: 44 * TILE_SIZE, y: 2 * TILE_SIZE },
+        { x: 56 * TILE_SIZE, y: 2 * TILE_SIZE },
+        { x: 7 * TILE_SIZE, y: (this.gridRows - 3) * TILE_SIZE },
+        { x: 20 * TILE_SIZE, y: (this.gridRows - 3) * TILE_SIZE },
+        { x: 32 * TILE_SIZE, y: (this.gridRows - 3) * TILE_SIZE },
+        { x: 44 * TILE_SIZE, y: (this.gridRows - 3) * TILE_SIZE },
+        { x: 56 * TILE_SIZE, y: (this.gridRows - 3) * TILE_SIZE },
+        { x: 3 * TILE_SIZE, y: 12 * TILE_SIZE },
+        { x: 3 * TILE_SIZE, y: 23 * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: 12 * TILE_SIZE },
+        { x: (this.gridCols - 4) * TILE_SIZE, y: 23 * TILE_SIZE },
       ];
 
       // Guarantee all spawn zones in grid are 100% EMPTY so no tank ever gets stuck!
@@ -352,31 +355,55 @@ export class GameEngine {
         }
       }
     } else {
-      // Symmetrical strategic spawn points across 34-column battlefield
+      // Symmetrical strategic spawn points across 48-column 16:9 battlefield
       this.spawnPoints = [
-        { x: 1 * TILE_SIZE, y: 1 * TILE_SIZE },
-        { x: 8 * TILE_SIZE, y: 1 * TILE_SIZE },
-        { x: 16 * TILE_SIZE, y: 1 * TILE_SIZE },
-        { x: 25 * TILE_SIZE, y: 1 * TILE_SIZE },
-        { x: 31 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 2 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 13 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 23 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 34 * TILE_SIZE, y: 1 * TILE_SIZE },
+        { x: 45 * TILE_SIZE, y: 1 * TILE_SIZE },
       ];
 
-      // Initialize 26 rows x 34 columns grid
+      // Initialize 27 rows x 48 columns grid (16:9 widescreen aspect ratio)
       this.grid = [];
       for (let r = 0; r < GRID_ROWS; r++) {
         this.grid[r] = new Array(GRID_COLS).fill(TileType.EMPTY);
       }
 
-      // Map pristine stage layout into center (cols 4..29)
-      const offsetCol = Math.floor((GRID_COLS - stageConfig.grid[0].length) / 2); // 4
-      for (let r = 0; r < GRID_ROWS; r++) {
+      // Map pristine stage layout into center (cols 11..36, rows 1..26)
+      // offsetRow = 1 seats base flush on rows 25 & 26 against bottom border (no road behind)
+      const offsetCol = Math.floor((GRID_COLS - stageConfig.grid[0].length) / 2); // 11
+      const offsetRow = 1;
+      for (let r = 0; r < stageConfig.grid.length; r++) {
         for (let c = 0; c < stageConfig.grid[r].length; c++) {
-          this.grid[r][offsetCol + c] = stageConfig.grid[r][c];
+          if (r + offsetRow < GRID_ROWS) {
+            this.grid[r + offsetRow][offsetCol + c] = stageConfig.grid[r][c];
+          }
         }
       }
 
-      // Populate flanking tactical corridors (cols 0..3 and cols 30..33)
+      // Populate flanking tactical corridors (cols 0..10 and cols 37..47)
       this.populateFlankTactics(stageConfig.id);
+
+      // Guarantee all 5 enemy spawn zones are 100% empty so enemy tanks never spawn inside walls
+      for (const sp of this.spawnPoints) {
+        const sc = Math.floor(sp.x / TILE_SIZE);
+        const sr = Math.floor(sp.y / TILE_SIZE);
+        for (let r = Math.max(0, sr - 1); r <= Math.min(this.gridRows - 1, sr + 2); r++) {
+          for (let c = Math.max(0, sc - 1); c <= Math.min(this.gridCols - 1, sc + 2); c++) {
+            this.grid[r][c] = TileType.EMPTY;
+          }
+        }
+      }
+
+      // Guarantee player staging area (cols 19..22, rows 24..26) is 100% clear of obstacles
+      for (let r = 24; r <= 26; r++) {
+        for (let c = 19; c <= 22; c++) {
+          if (r < this.gridRows && c < this.gridCols) {
+            this.grid[r][c] = TileType.EMPTY;
+          }
+        }
+      }
     }
 
     this.updateViewportSize();
@@ -448,25 +475,42 @@ export class GameEngine {
   }
 
   private populateFlankTactics(stageId: number) {
-    // Symmetrical flanking tactical cover:
-    // Columns 0 & 3, and 30 & 33 are clear high-speed transit highway corridors
-    // Columns 1 & 2, and 31 & 32 contain tactical cover:
-    for (let r = 4; r <= 7; r++) {
-      this.grid[r][1] = TileType.BRICK;
-      this.grid[r][32] = TileType.BRICK;
+    // Symmetrical flanking tactical cover across 48 widescreen columns:
+    // Left Flank (cols 0..10) and Right Flank (cols 37..47)
+    // Keep rows 0..4 completely free for smooth horizontal speed lanes
+    const bunkerTile = stageId >= 5 ? TileType.STEEL : TileType.BRICK;
+    
+    // Northern fortified pillars (cols 4 and 43, rows 5..8)
+    for (let r = 5; r <= 8; r++) {
+      this.grid[r][4] = TileType.BRICK;
+      this.grid[r][43] = TileType.BRICK;
     }
 
-    // Midfield bunker (Steel or Crate based on stage)
-    const bunkerTile = stageId >= 5 ? TileType.STEEL : TileType.BRICK;
-    this.grid[10][1] = bunkerTile;
-    this.grid[10][2] = bunkerTile;
-    this.grid[10][31] = bunkerTile;
-    this.grid[10][32] = bunkerTile;
+    // Midfield bunker outposts (cols 4..5 and 42..43, rows 11..12)
+    this.grid[11][4] = bunkerTile;
+    this.grid[11][5] = bunkerTile;
+    this.grid[12][4] = bunkerTile;
+    this.grid[12][5] = bunkerTile;
 
-    // Southern defense crates
-    for (let r = 14; r <= 17; r++) {
-      this.grid[r][2] = TileType.BRICK;
-      this.grid[r][31] = TileType.BRICK;
+    this.grid[11][42] = bunkerTile;
+    this.grid[11][43] = bunkerTile;
+    this.grid[12][42] = bunkerTile;
+    this.grid[12][43] = bunkerTile;
+
+    // Tactical Explosive Fuel Barrels on both flanks (row 14)
+    this.grid[14][4] = TileType.EXPLOSIVE_BARREL;
+    this.grid[14][43] = TileType.EXPLOSIVE_BARREL;
+
+    // Southern defense barricades (cols 4 and 43, rows 16..19)
+    for (let r = 16; r <= 19; r++) {
+      this.grid[r][4] = TileType.BRICK;
+      this.grid[r][43] = TileType.BRICK;
+    }
+
+    // Camouflage foliage for tactical ambushes (cols 7 and 40, rows 8..10)
+    for (let r = 8; r <= 10; r++) {
+      this.grid[r][7] = TileType.BUSH;
+      this.grid[r][40] = TileType.BUSH;
     }
   }
 
@@ -488,21 +532,26 @@ export class GameEngine {
     this.stats.baseUpgradeCost = cfg.upgradeCost;
     this.stats.canUpgradeBase = this.baseTier < 5 && this.stats.score >= cfg.upgradeCost;
 
-    // Apply hardened perimeter walls around base footprint (cols 15-18, rows 23-25)
-    for (let c = 15; c <= 18; c++) {
-      this.grid[23][c] = cfg.wallType;
+    const bCol = this.baseCoord.col; // 23
+    const bRow = this.baseCoord.row; // 24
+
+    // Apply hardened perimeter walls around base footprint (cols bCol-1..bCol+2, rows bRow-1..bRow+1)
+    for (let c = bCol - 1; c <= bCol + 2; c++) {
+      if (bRow - 1 >= 0 && c >= 0 && c < this.gridCols) {
+        this.grid[bRow - 1][c] = cfg.wallType;
+      }
     }
-    this.grid[24][15] = cfg.wallType;
-    this.grid[25][15] = cfg.wallType;
-    this.grid[24][18] = cfg.wallType;
-    this.grid[25][18] = cfg.wallType;
+    if (bRow < this.gridRows && bCol - 1 >= 0) this.grid[bRow][bCol - 1] = cfg.wallType;
+    if (bRow + 1 < this.gridRows && bCol - 1 >= 0) this.grid[bRow + 1][bCol - 1] = cfg.wallType;
+    if (bRow < this.gridRows && bCol + 2 < this.gridCols) this.grid[bRow][bCol + 2] = cfg.wallType;
+    if (bRow + 1 < this.gridRows && bCol + 2 < this.gridCols) this.grid[bRow + 1][bCol + 2] = cfg.wallType;
 
     // Ensure base tiles are intact
     if (!this.isBaseDestroyed) {
-      this.grid[24][16] = TileType.BASE;
-      this.grid[24][17] = TileType.BASE;
-      this.grid[25][16] = TileType.BASE;
-      this.grid[25][17] = TileType.BASE;
+      this.grid[bRow][bCol] = TileType.BASE;
+      this.grid[bRow][bCol + 1] = TileType.BASE;
+      this.grid[bRow + 1][bCol] = TileType.BASE;
+      this.grid[bRow + 1][bCol + 1] = TileType.BASE;
     }
 
     // Reset wall durability map
@@ -1094,6 +1143,7 @@ export class GameEngine {
         if (dist < TANK_SIZE * 0.95) {
           shopManager.addCoins(c.value);
           this.stats.coins = shopManager.getProfile().coins;
+          this.stats.stageCoins = (this.stats.stageCoins || 0) + c.value;
           soundEngine.playCoinPickup();
           particleSystem.emitCoinPickup(c.x, c.y);
           this.addFloatText(c.x, c.y - 12, `+${c.value} 🪙`, '#facc15');
@@ -1678,33 +1728,39 @@ export class GameEngine {
       }
     }
 
-    if (!enemy.currentDecisionTimer) enemy.currentDecisionTimer = enemy.isHunter ? 0.2 : 1.0;
+    if (enemy.strafeCommitTimer && enemy.strafeCommitTimer > 0) {
+      enemy.strafeCommitTimer -= dt;
+    }
+
+    const isSmartTank = enemy.isHunter || enemy.is360Boss;
+    if (!enemy.currentDecisionTimer) enemy.currentDecisionTimer = isSmartTank ? 0.9 : 1.2;
     enemy.currentDecisionTimer -= dt;
 
     if (enemy.currentDecisionTimer <= 0) {
-      // Hunter recalculates tactical path rapidly (every 0.2s - 0.35s) for smooth standoff maneuvering
-      enemy.currentDecisionTimer = enemy.isHunter ? (0.2 + Math.random() * 0.15) : (0.8 + Math.random() * 1.5);
-      this.decideEnemyDirection(enemy);
+      // Smart tanks re-evaluate tactics at smooth 0.9s - 1.4s intervals (eliminating frantic twitching)
+      enemy.currentDecisionTimer = isSmartTank ? (0.9 + Math.random() * 0.5) : (0.8 + Math.random() * 1.5);
+      this.decideEnemyDirection(enemy, false);
     }
 
     // Movement
     const vec = DIR_VECTORS[enemy.dir];
     const weatherMod = weatherSystem.getSpeedMultiplier();
     const effectiveSpeed = enemy.is360Boss ? enemy.speed : (enemy.isHunter ? Math.max(enemy.speed, 85) : enemy.speed);
-    const step = effectiveSpeed * weatherMod * dt;
+    
+    // When holding prime firing position against stationary player, hold ground steadily
+    const step = (isSmartTank && enemy.isHoldingFirePosition) ? 0 : (effectiveSpeed * weatherMod * dt);
     const nextX = enemy.x + vec.x * step;
     const nextY = enemy.y + vec.y * step;
 
     // Stand-Off Distance Rule for Hunter & 360 Boss:
     // Maintains safe operational space (never rams or gets stuck against player hull)
-    const isSmartTank = enemy.isHunter || enemy.is360Boss;
     let isStandoffBlocked = false;
     if (isSmartTank && this.player && this.player.hp > 0 && !this.isPlayerDying) {
       const pCx = this.player.x + this.player.width / 2;
       const pCy = this.player.y + this.player.height / 2;
       const curDist = Math.hypot((enemy.x + enemy.width / 2) - pCx, (enemy.y + enemy.height / 2) - pCy);
       const nextDist = Math.hypot((nextX + enemy.width / 2) - pCx, (nextY + enemy.height / 2) - pCy);
-      const MIN_STANDOFF = enemy.is360Boss ? 105 : 85;
+      const MIN_STANDOFF = enemy.is360Boss ? 100 : 80;
 
       if (nextDist < MIN_STANDOFF && nextDist <= curDist) {
         isStandoffBlocked = true;
@@ -1719,7 +1775,7 @@ export class GameEngine {
       enemy.stuckTimer = 0;
     } else {
       // Sub-step closer to obstacle if not standoff-blocked
-      if (!isStandoffBlocked) {
+      if (!isStandoffBlocked && step > 0) {
         let subStep = step;
         while (subStep > 0.2) {
           subStep /= 2;
@@ -1735,8 +1791,8 @@ export class GameEngine {
       enemy.stuckTimer = (enemy.stuckTimer || 0) + dt;
 
       if (isSmartTank) {
-        // Hunter & 360 Boss immediately recalculate standoff / retreat / strafe vector to keep moving fluidly
-        if (enemy.stuckTimer > 0.08 || isStandoffBlocked) {
+        // Only force direction recalculation if stuck against obstacle/standoff for a sustained moment (>0.35s)
+        if (enemy.stuckTimer > 0.35) {
           this.decideEnemyDirection(enemy, true);
           enemy.stuckTimer = 0;
         }
@@ -2888,13 +2944,15 @@ export class GameEngine {
     this.baseHp = 0;
     this.stats.baseHp = 0;
 
-    this.grid[24][16] = TileType.BASE_DESTROYED;
-    this.grid[24][17] = TileType.BASE_DESTROYED;
-    this.grid[25][16] = TileType.BASE_DESTROYED;
-    this.grid[25][17] = TileType.BASE_DESTROYED;
+    const bc = this.baseCoord.col;
+    const br = this.baseCoord.row;
+    this.grid[br][bc] = TileType.BASE_DESTROYED;
+    this.grid[br][bc + 1] = TileType.BASE_DESTROYED;
+    this.grid[br + 1][bc] = TileType.BASE_DESTROYED;
+    this.grid[br + 1][bc + 1] = TileType.BASE_DESTROYED;
 
-    const baseX = BASE_CENTER.x;
-    const baseY = 25 * TILE_SIZE;
+    const baseX = this.baseCenter.x;
+    const baseY = (br + 1) * TILE_SIZE;
 
     // Base Destruction multi-stage detonation
     particleSystem.emitTankExplosion(baseX, baseY, 52, '#f97316', true);
@@ -4034,20 +4092,20 @@ export class GameEngine {
     // Rich military dark asphalt/soil or deep woodland gradient filling 100% of the canvas
     const bgGrad = ctx.createLinearGradient(0, 0, vW, vH);
     if (isMeadow) {
-      bgGrad.addColorStop(0, '#101a11');
-      bgGrad.addColorStop(0.5, '#0c140d');
-      bgGrad.addColorStop(1, '#080e09');
+      bgGrad.addColorStop(0, '#0d160d');
+      bgGrad.addColorStop(0.5, '#091009');
+      bgGrad.addColorStop(1, '#050a05');
     } else {
-      bgGrad.addColorStop(0, '#151821');
-      bgGrad.addColorStop(0.5, '#11141b');
-      bgGrad.addColorStop(1, '#0e1016');
+      bgGrad.addColorStop(0, '#11141c');
+      bgGrad.addColorStop(0.5, '#0d0f15');
+      bgGrad.addColorStop(1, '#090a0f');
     }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, vW, vH);
 
     // Extended paver tile seams aligned seamlessly with arena grid
     const effectiveTile = Math.max(8, TILE_SIZE * Math.max(0.1, this.scale));
-    ctx.strokeStyle = isMeadow ? 'rgba(134, 239, 172, 0.025)' : 'rgba(255, 255, 255, 0.022)';
+    ctx.strokeStyle = isMeadow ? 'rgba(134, 239, 172, 0.022)' : 'rgba(255, 255, 255, 0.020)';
     ctx.lineWidth = 1;
 
     // Vertical seam lines extending left and right
@@ -4068,61 +4126,32 @@ export class GameEngine {
       ctx.stroke();
     }
 
-    // Tactical Wing Demarcations on widescreen displays (left and right flanks)
-    const rightStartX = this.originX + this.viewWidth * this.scale;
-    const rightMargin = vW - rightStartX;
-
-    if (this.originX > 25 && rightMargin > 25) {
-      ctx.save();
-      const leftMidX = this.originX / 2;
-      const rightMidX = rightStartX + rightMargin / 2;
-      const leftRadius = Math.max(1, Math.min(vH * 0.45, this.originX * 0.9));
-      const rightRadius = Math.max(1, Math.min(vH * 0.45, rightMargin * 0.9));
-
-      // Subtle tactical radar arc sweep on West flank
-      ctx.strokeStyle = isMeadow ? 'rgba(74, 222, 128, 0.08)' : 'rgba(56, 189, 248, 0.06)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 6]);
-      ctx.beginPath();
-      ctx.arc(this.originX, vH / 2, leftRadius, Math.PI * 0.5, Math.PI * 1.5);
-      ctx.stroke();
-
-      // Subtle tactical radar arc sweep on East flank
-      ctx.beginPath();
-      ctx.arc(rightStartX, vH / 2, rightRadius, -Math.PI * 0.5, Math.PI * 0.5);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Subtle tactical sector text markings
-      ctx.fillStyle = isMeadow ? 'rgba(134, 239, 172, 0.32)' : 'rgba(148, 163, 184, 0.28)';
-      ctx.font = 'bold 10px monospace';
-      ctx.textAlign = 'center';
-      if (isMeadow) {
-        ctx.fillText('◄ CHIẾN TRƯỜNG ĐỒNG CỎ', leftMidX, 32);
-        ctx.fillText('CĂN CỨ TIỀN TIÊU', leftMidX, vH - 28);
-        ctx.fillText('RỪNG TÁC CHIẾN ►', rightMidX, 32);
-        ctx.fillText('VÙNG ĐỊCH TẬP KÍCH', rightMidX, vH - 28);
-      } else {
-        ctx.fillText('◄ VÀNH ĐAI TÂY', leftMidX, 32);
-        ctx.fillText('RADAR QUÂN SỰ', leftMidX, vH - 28);
-        ctx.fillText('VÀNH ĐAI ĐÔNG ►', rightMidX, 32);
-        ctx.fillText('TRINH SÁT TÁC CHIẾN', rightMidX, vH - 28);
-      }
-      ctx.restore();
-    }
+    // Soft atmospheric vignette across the screen edges to frame the active combat arena
+    const vig = ctx.createRadialGradient(vW / 2, vH / 2, vH * 0.38, vW / 2, vH / 2, Math.max(vW, vH) * 0.72);
+    vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vig.addColorStop(0.7, 'rgba(0, 0, 0, 0.22)');
+    vig.addColorStop(1, 'rgba(0, 0, 0, 0.68)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, vW, vH);
   }
 
   private renderArenaBoundary(ctx: CanvasRenderingContext2D) {
     ctx.save();
     const isMeadow = this.isMeadowStage();
-    // Glowing perimeter line around combat zone
-    ctx.strokeStyle = isMeadow ? 'rgba(74, 222, 128, 0.35)' : 'rgba(56, 189, 248, 0.35)';
+    const primaryColor = isMeadow ? '#4ade80' : '#38bdf8';
+    const subtleColor = isMeadow ? 'rgba(74, 222, 128, 0.45)' : 'rgba(56, 189, 248, 0.45)';
+
+    // 1. Soft glowing outer neon halo
+    ctx.shadowColor = primaryColor;
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = subtleColor;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(0.5, 0.5, this.canvasWidth - 1, this.canvasHeight - 1);
 
-    // High-tech Corner reinforced brackets
-    const bLen = 16;
-    ctx.strokeStyle = isMeadow ? '#4ade80' : '#38bdf8';
+    // 2. High-tech Corner reinforced brackets with bold neon
+    ctx.shadowBlur = 10;
+    const bLen = 24;
+    ctx.strokeStyle = primaryColor;
     ctx.lineWidth = 2.5;
 
     // Top-Left
@@ -4152,6 +4181,23 @@ export class GameEngine {
     ctx.lineTo(this.canvasWidth, this.canvasHeight);
     ctx.lineTo(this.canvasWidth - bLen, this.canvasHeight);
     ctx.stroke();
+
+    // Reset shadow
+    ctx.shadowBlur = 0;
+
+    // 3. Subtle tactical edge notches every 4 tiles along borders
+    ctx.fillStyle = subtleColor;
+    for (let c = 4; c < this.gridCols; c += 4) {
+      const x = c * TILE_SIZE;
+      ctx.fillRect(x - 1, 0, 2, 4);
+      ctx.fillRect(x - 1, this.canvasHeight - 4, 2, 4);
+    }
+    for (let r = 4; r < this.gridRows; r += 4) {
+      const y = r * TILE_SIZE;
+      ctx.fillRect(0, y - 1, 4, 2);
+      ctx.fillRect(this.canvasWidth - 4, y - 1, 4, 2);
+    }
+
     ctx.restore();
   }
 

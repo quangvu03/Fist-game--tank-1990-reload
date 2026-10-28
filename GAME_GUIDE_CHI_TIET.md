@@ -17,16 +17,19 @@
 ---
 
 ## 1. TỔNG QUAN KIẾN TRÚC & KÍCH THƯỚC CHIẾN TRƯỜNG
-
-- **Kích thước lưới logic (Grid Layout):** `34 cột ngang × 26 hàng dọc`.
+ 
+- **Kích thước lưới logic (Grid Layout):** `48 cột ngang × 27 hàng dọc`.
 - **Kích thước một ô gạch (Tile Size):** `26 × 26 pixels`.
-- **Độ phân giải hiển thị chuẩn (Virtual Resolution):** `884px (ngang) × 676px (dọc)`.
-- **Tỉ lệ khung hình (Aspect Ratio):** Chuẩn Widescreen ~4:3 mở rộng sang 1.3:1, phù hợp cho mọi màn hình máy tính và thiết bị di động.
-- **Tọa độ Sở Chỉ Huy Đại Bàng (Base Footprint):** Cột 16 & 17, Hàng 24 & 25 (ngay chính giữa chân bản đồ).
-- **Điểm xuất kích của phe địch:** 3 hướng tiến công chiến lược tại hàng 1:
-  - *Cánh Tây:* Cột 1 (x: 26px)
-  - *Trung Lộ:* Cột 16 (x: 416px)
-  - *Cánh Đông:* Cột 31 (x: 806px)
+- **Độ phân giải hiển thị chuẩn (Virtual Resolution):** `1248px (ngang) × 702px (dọc)`.
+- **Tỉ lệ khung hình (Aspect Ratio):** Chuẩn Widescreen **16:9** (1.778:1) hoàn hảo cho màn hình máy tính chữ nhật (1080p/2K/4K) và điện thoại xoay ngang (Landscape).
+- **Tọa độ Sở Chỉ Huy Đại Bàng (Base Footprint):** Cột 23 & 24, Hàng 24 & 25 (ngay chính giữa chân bản đồ, 23 cột cánh trái và 23 cột cánh phải đối xứng hoàn hảo).
+- **Điểm xuất kích của phe địch:** 5 hướng tiến công chiến lược trải rộng toàn màn hình:
+  - *Cánh Tả Viền:* Cột 2 (x: 52px)
+  - *Tiền Tiêu Cánh Trái:* Cột 13 (x: 338px)
+  - *Trung Lộ:* Cột 23 (x: 598px)
+  - *Tiền Tiêu Cánh Phải:* Cột 34 (x: 884px)
+  - *Cánh Hữu Viền:* Cột 45 (x: 1170px)
+- **Bản đồ Sinh Tồn Mở Rộng:** `64 cột ngang × 36 hàng dọc` (1664px × 936px - đúng tỷ lệ 16:9).
 
 ---
 

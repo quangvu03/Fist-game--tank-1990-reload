@@ -52,6 +52,8 @@ export interface Tank {
   tracksOffset: number;
   stuckTimer?: number;
   currentDecisionTimer?: number;
+  strafeCommitTimer?: number; // Timer committed to a direction (prevents rapid twitching)
+  isHoldingFirePosition?: boolean; // When in optimal firing standoff against stationary player
   isHunter?: boolean; // Xe tăng đặc nhiệm truy lùng (nòng 4 hướng chính, giữ khoảng cách)
   is360Boss?: boolean; // Siêu Trùm có tháp pháo xoay tự do 360 độ, HP cực trâu, tốc độ chậm, di chuyển giữ cự ly thông minh
 }
@@ -188,6 +190,7 @@ export interface GameStats {
   score: number;
   highScore: number;
   coins?: number;
+  stageCoins?: number; // Tiền xu nhặt được trong ván chơi hiện tại
   lives: number;
   playerHp: number;
   playerMaxHp: number;

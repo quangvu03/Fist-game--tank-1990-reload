@@ -664,6 +664,35 @@ class SoundEngine {
       // Safe guard
     }
   }
+
+  // --- Cryo Freeze Chime ---
+  public playClockFreeze() {
+    if (this.isMuted) return;
+    try {
+      this.resumeCtx();
+      if (!this.ctx || !this.masterGain) return;
+
+      const t = this.ctx.currentTime;
+      const freqs = [880, 1174, 1567, 2093]; // A5 - D6 - G6 - C7 crystal ice chime
+      freqs.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t + idx * 0.04);
+
+        gain.gain.setValueAtTime(0.001, t + idx * 0.04);
+        gain.gain.linearRampToValueAtTime(0.2, t + idx * 0.04 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.04 + 0.16);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+        osc.start(t + idx * 0.04);
+        osc.stop(t + idx * 0.04 + 0.17);
+      });
+    } catch {
+      // Safe guard
+    }
+  }
 }
 
 export const soundEngine = new SoundEngine();

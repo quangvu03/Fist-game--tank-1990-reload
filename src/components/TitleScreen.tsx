@@ -1,7 +1,21 @@
 import { useEffect, useState } from 'react';
 import { GameMode, ControlMode } from '../types/game';
-import { Volume2, VolumeX, Play, Shield, Skull, Compass, Award, BookOpen, Music, Crown } from 'lucide-react';
+import {
+  Volume2,
+  VolumeX,
+  Play,
+  Shield,
+  Skull,
+  Compass,
+  Award,
+  BookOpen,
+  Music,
+  Crown,
+  Coins,
+  Store,
+} from 'lucide-react';
 import heroImage from '../assets/images/tank_battle_hero_1792246756619.jpg';
+import { shopManager } from '../game/shopManager';
 
 interface TitleScreenProps {
   onStartGame: (mode: GameMode, controlMode: ControlMode, startStage?: number) => void;
@@ -11,6 +25,7 @@ interface TitleScreenProps {
   onToggleMusic?: () => void;
   highScore: number;
   onOpenGuide?: () => void;
+  onOpenShop?: () => void;
 }
 
 export function TitleScreen({
@@ -21,9 +36,15 @@ export function TitleScreen({
   onToggleMusic,
   highScore,
   onOpenGuide,
+  onOpenShop,
 }: TitleScreenProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode>('CAMPAIGN');
   const [stageSelect, setStageSelect] = useState<number>(1);
+  const [profile, setProfile] = useState(() => shopManager.getProfile());
+
+  useEffect(() => {
+    return shopManager.subscribe((p) => setProfile(p));
+  }, []);
 
   // Keyboard shortcut: Enter or Space to start immediately
   useEffect(() => {
@@ -73,6 +94,26 @@ export function TitleScreen({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Coin Wallet */}
+          <div
+            className="flex items-center gap-1.5 text-xs text-yellow-300 font-mono tabular-nums bg-slate-900/90 border border-yellow-500/50 px-2.5 py-1 rounded-lg"
+            title={`Số tiền xu quân sự hiện có: ${profile.coins.toLocaleString()} xu`}
+          >
+            <Coins className="w-3.5 h-3.5 text-yellow-400 shrink-0 animate-pulse" />
+            <span className="font-bold">{profile.coins.toLocaleString()}</span>
+          </div>
+
+          {onOpenShop && (
+            <button
+              onClick={onOpenShop}
+              className="flex items-center gap-1.5 text-xs text-slate-950 font-black bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+              title="Vào Cửa Hàng Quân Sự: Mua xe tăng bọc thép, kho đạn và nâng cấp vũ khí"
+            >
+              <Store className="w-3.5 h-3.5 shrink-0" />
+              <span>CỬA HÀNG</span>
+            </button>
+          )}
+
           {highScore > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-amber-300 font-mono tabular-nums bg-slate-900/90 border border-slate-800 px-2.5 py-1 rounded-lg">
               <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />

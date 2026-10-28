@@ -6,6 +6,7 @@ import {
   Bullet,
   PowerUp,
   PowerUpType,
+  CoinDrop,
   FloatText,
   TrackMark,
   StageConfig,
@@ -37,6 +38,8 @@ import {
 import { soundEngine } from '../audio/soundEngine';
 import { particleSystem } from './particleSystem';
 import { weatherSystem } from './weatherSystem';
+import { shopManager } from './shopManager';
+import { SupportItemId } from '../types/shop';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -73,7 +76,9 @@ export class GameEngine {
   public bullets: Bullet[] = [];
   public trackMarks: TrackMark[] = [];
   public powerUps: PowerUp[] = [];
+  public coins: CoinDrop[] = [];
   public floatTexts: FloatText[] = [];
+  private emergencyRepairUsedThisLife: boolean = false;
 
   // Spawning (Left flank, Center, Right flank across 34 columns)
   private spawnPoints = [
@@ -97,6 +102,7 @@ export class GameEngine {
   public stats: GameStats = {
     score: 0,
     highScore: 0,
+    coins: 0,
     lives: 3,
     playerHp: 3,
     playerMaxHp: 3,
@@ -220,6 +226,13 @@ export class GameEngine {
     } catch {
       // Ignore
     }
+
+    // Sync Shop Profile
+    const shopProfile = shopManager.getProfile();
+    this.stats.coins = shopProfile.coins;
+    this.stats.supportInventory = shopProfile.supportInventory;
+    this.stats.equippedTankName = shopManager.getEquippedTankConfig().name;
+    this.stats.equippedAmmoBadge = shopManager.getEquippedAmmoConfig().name;
 
     this.onStatsUpdate = callbacks.onStatsUpdate;
     this.onGameOver = callbacks.onGameOver;
@@ -417,6 +430,7 @@ export class GameEngine {
     this.enemies = [];
     this.bullets = [];
     this.powerUps = [];
+    this.coins = [];
     this.floatTexts = [];
     this.trackMarks = [];
 
@@ -572,6 +586,20 @@ export class GameEngine {
       e.preventDefault();
       this.upgradeBase();
     }
+
+    // Support items: B (Airstrike), F (Cryo Freeze), R (Repair Kit)
+    if (e.code === 'KeyB') {
+      e.preventDefault();
+      this.useSupportItem('AIRSTRIKE');
+    }
+    if (e.code === 'KeyF') {
+      e.preventDefault();
+      this.useSupportItem('CRYO_FREEZE');
+    }
+    if (e.code === 'KeyR') {
+      e.preventDefault();
+      this.useSupportItem('REPAIR_KIT');
+    }
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
@@ -639,9 +667,38 @@ export class GameEngine {
     return this.stats.lives;
   }
 
+  public refreshShopCustomization() {
+    if (this.player && this.player.hp > 0) {
+      const equippedTank = shopManager.getEquippedTankConfig();
+      const bonusHp = shopManager.getBonusHullHp();
+      const engineSpeedBonus = shopManager.getEngineSpeedBonus();
+      const reloadMult = shopManager.getReloadSpeedMultiplier();
+      const tier = this.player.tier;
+
+      const totalMaxHp = equippedTank.baseMaxHp + bonusHp + tier;
+      const hpRatio = this.player.hp / Math.max(1, this.player.maxHp);
+      this.player.maxHp = totalMaxHp;
+      this.player.hp = Math.min(totalMaxHp, Math.max(1, Math.round(hpRatio * totalMaxHp)));
+
+      const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
+      const baseEffectiveSpeed = equippedTank.baseSpeed + engineSpeedBonus + (tier * 6);
+      this.player.speed = baseEffectiveSpeed + speedBoost;
+      this.player.reloadMax = (equippedTank.baseReload * reloadMult) * (this.speedBoostTimer > 0 ? 0.8 : 1.0);
+      this.player.name = `${equippedTank.name} (Cấp ${tier + 1})`;
+      this.player.color = equippedTank.color;
+    }
+    this.syncStats();
+  }
+
   // --- Spawning ---
   private spawnPlayer(tier: number = 0) {
     const playerTierConfig = PLAYER_TIERS[Math.min(tier, PLAYER_TIERS.length - 1)];
+    const equippedTank = shopManager.getEquippedTankConfig();
+    const bonusHp = shopManager.getBonusHullHp();
+    const engineSpeedBonus = shopManager.getEngineSpeedBonus();
+    const startingShield = shopManager.getStartingShieldSeconds();
+    const reloadMult = shopManager.getReloadSpeedMultiplier();
+
     let spawnX = (this.baseCoord.col - 3) * TILE_SIZE;
     let spawnY = this.baseCoord.row * TILE_SIZE;
 
@@ -667,7 +724,10 @@ export class GameEngine {
     }
 
     const speedBoost = this.speedBoostTimer > 0 ? 35 : 0;
-    const reloadSpeed = this.speedBoostTimer > 0 ? playerTierConfig.reloadMax * 0.8 : playerTierConfig.reloadMax;
+    const baseEffectiveSpeed = equippedTank.baseSpeed + engineSpeedBonus + (tier * 6);
+    const effectiveSpeed = baseEffectiveSpeed + speedBoost;
+    const effectiveReloadMax = (equippedTank.baseReload * reloadMult) * (this.speedBoostTimer > 0 ? 0.8 : 1.0);
+    const totalMaxHp = equippedTank.baseMaxHp + bonusHp + tier;
 
     this.player = {
       id: 'player',
@@ -678,24 +738,25 @@ export class GameEngine {
       height: TANK_SIZE,
       dir: 'UP',
       turretAngle: -Math.PI / 2,
-      speed: playerTierConfig.speed + speedBoost,
-      maxHp: playerTierConfig.maxHp,
-      hp: playerTierConfig.maxHp,
+      speed: effectiveSpeed,
+      maxHp: totalMaxHp,
+      hp: totalMaxHp,
       tier,
       isPlayer: true,
       isFlashing: false,
       reloadTimer: 0,
-      reloadMax: reloadSpeed,
-      shieldTime: 3.5,
+      reloadMax: effectiveReloadMax,
+      shieldTime: startingShield,
       frozenTime: 0,
       scoreValue: 0,
-      name: playerTierConfig.name,
-      color: '#22c55e',
+      name: `${equippedTank.name} (Cấp ${tier + 1})`,
+      color: equippedTank.color,
       tracksOffset: 0,
     };
 
+    this.emergencyRepairUsedThisLife = false;
     this.isPlayerDying = false;
-    particleSystem.emitSpawnBurst(spawnX + TANK_SIZE / 2, spawnY + TANK_SIZE / 2, '#4ade80');
+    particleSystem.emitSpawnBurst(spawnX + TANK_SIZE / 2, spawnY + TANK_SIZE / 2, equippedTank.accentColor || '#4ade80');
   }
 
   private spawnEnemy() {
@@ -1000,6 +1061,53 @@ export class GameEngine {
       }
     }
     this.powerUps = this.powerUps.filter(p => !p.dead);
+
+    // Update Coins (Magnet pull & collection)
+    const magnetRadius = shopManager.getMagnetRadius();
+    const playerCenterX = this.player ? this.player.x + this.player.width / 2 : -999;
+    const playerCenterY = this.player ? this.player.y + this.player.height / 2 : -999;
+
+    for (const c of this.coins) {
+      if (c.dead) continue;
+
+      // Inertia & friction
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      c.vx *= 0.88;
+      c.vy *= 0.88;
+
+      // Magnet pull toward player if within radius
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying && magnetRadius > 0) {
+        const dx = playerCenterX - c.x;
+        const dy = playerCenterY - c.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < magnetRadius && dist > 1) {
+          const pullSpeed = Math.min(420, 180 + (magnetRadius - dist) * 2.2);
+          c.vx += (dx / dist) * pullSpeed * dt * 4;
+          c.vy += (dy / dist) * pullSpeed * dt * 4;
+        }
+      }
+
+      // Check pickup collision
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+        const dist = Math.hypot(playerCenterX - c.x, playerCenterY - c.y);
+        if (dist < TANK_SIZE * 0.95) {
+          shopManager.addCoins(c.value);
+          this.stats.coins = shopManager.getProfile().coins;
+          soundEngine.playCoinPickup();
+          particleSystem.emitCoinPickup(c.x, c.y);
+          this.addFloatText(c.x, c.y - 12, `+${c.value} 🪙`, '#facc15');
+          c.dead = true;
+          continue;
+        }
+      }
+
+      c.duration -= dt;
+      if (c.duration <= 0) {
+        c.dead = true;
+      }
+    }
+    this.coins = this.coins.filter(c => !c.dead);
 
     // Update Float Texts
     for (const ft of this.floatTexts) {
@@ -1462,8 +1570,10 @@ export class GameEngine {
   private firePlayerBullet() {
     if (!this.player || this.player.hp <= 0 || this.isPlayerDying || this.player.reloadTimer > 0) return;
 
-    const tierCfg = PLAYER_TIERS[Math.min(this.player.tier, PLAYER_TIERS.length - 1)];
-    const reloadSpeed = this.speedBoostTimer > 0 ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax;
+    const equippedTank = shopManager.getEquippedTankConfig();
+    const equippedAmmo = shopManager.getEquippedAmmoConfig();
+    const reloadMult = shopManager.getReloadSpeedMultiplier();
+    const reloadSpeed = (equippedTank.baseReload * reloadMult) * (this.speedBoostTimer > 0 ? 0.8 : 1.0);
     this.player.reloadTimer = reloadSpeed;
 
     const pCenterX = this.player.x + this.player.width / 2;
@@ -1473,36 +1583,34 @@ export class GameEngine {
     const barrelLength = this.player.width * 0.58;
     const muzzleX = pCenterX + Math.cos(angle) * barrelLength;
     const muzzleY = pCenterY + Math.sin(angle) * barrelLength;
-    const effectiveBulletSpeed = Math.round(tierCfg.bulletSpeed * (this.speedBoostTimer > 0 ? 1.15 : 1.0));
 
-    if (tierCfg.doubleShot) {
+    const baseBulletSpeed = equippedTank.baseBulletSpeed * equippedAmmo.bulletSpeedMultiplier;
+    const effectiveBulletSpeed = Math.round(baseBulletSpeed * (this.speedBoostTimer > 0 ? 1.15 : 1.0));
+    const effectiveDamage = Math.max(1, Math.round(equippedTank.damage * equippedAmmo.damageMultiplier));
+    const canBreakSteel = equippedTank.canBreakSteel || equippedAmmo.canBreakSteel || this.player.tier >= 3;
+    const isTwin = equippedTank.doubleShot || this.player.tier >= 2;
+
+    if (isTwin) {
       const perpX = -Math.sin(angle) * 5;
       const perpY = Math.cos(angle) * 5;
 
-      this.bullets.push({
-        id: `pb_${Date.now()}_1`,
-        x: muzzleX + perpX,
-        y: muzzleY + perpY,
-        vx: Math.cos(angle) * effectiveBulletSpeed,
-        vy: Math.sin(angle) * effectiveBulletSpeed,
-        radius: BULLET_RADIUS,
-        damage: 1,
-        ownerId: this.player.id,
-        isPlayer: true,
-        canBreakSteel: tierCfg.canBreakSteel,
-      });
-
-      this.bullets.push({
-        id: `pb_${Date.now()}_2`,
-        x: muzzleX - perpX,
-        y: muzzleY - perpY,
-        vx: Math.cos(angle) * effectiveBulletSpeed,
-        vy: Math.sin(angle) * effectiveBulletSpeed,
-        radius: BULLET_RADIUS,
-        damage: 1,
-        ownerId: this.player.id,
-        isPlayer: true,
-        canBreakSteel: tierCfg.canBreakSteel,
+      [-1, 1].forEach((sign, idx) => {
+        this.bullets.push({
+          id: `pb_${Date.now()}_${idx}`,
+          x: muzzleX + perpX * sign,
+          y: muzzleY + perpY * sign,
+          vx: Math.cos(angle) * effectiveBulletSpeed,
+          vy: Math.sin(angle) * effectiveBulletSpeed,
+          radius: BULLET_RADIUS,
+          damage: effectiveDamage,
+          ownerId: this.player!.id,
+          isPlayer: true,
+          canBreakSteel,
+          splashRadius: equippedAmmo.splashRadius,
+          slowEffect: equippedAmmo.slowEffect,
+          homing: equippedAmmo.homing,
+          color: equippedAmmo.color,
+        });
       });
       soundEngine.playShoot(true, true);
     } else {
@@ -1513,16 +1621,20 @@ export class GameEngine {
         vx: Math.cos(angle) * effectiveBulletSpeed,
         vy: Math.sin(angle) * effectiveBulletSpeed,
         radius: BULLET_RADIUS,
-        damage: 1,
+        damage: effectiveDamage,
         ownerId: this.player.id,
         isPlayer: true,
-        canBreakSteel: tierCfg.canBreakSteel,
+        canBreakSteel,
+        splashRadius: equippedAmmo.splashRadius,
+        slowEffect: equippedAmmo.slowEffect,
+        homing: equippedAmmo.homing,
+        color: equippedAmmo.color,
       });
       soundEngine.playShoot(true, false);
     }
 
-    // High fidelity muzzle flash particle burst
-    particleSystem.emitMuzzleFlash(muzzleX, muzzleY, angle, tierCfg.doubleShot);
+    // High fidelity muzzle flash particle burst with ammo color tint
+    particleSystem.emitMuzzleFlash(muzzleX, muzzleY, angle, isTwin);
     this.addCameraShake(1.2);
   }
 
@@ -2211,8 +2323,38 @@ export class GameEngine {
       b.y += b.vy * dt;
 
       // Rocket exhaust trail particles
-      if (b.isMissile && Math.random() < 0.8) {
+      if ((b.isMissile || b.homing) && Math.random() < 0.8) {
         particleSystem.emitMissileTrail(b.x, b.y);
+      }
+
+      // Homing missile target tracking for player bullets
+      if (b.homing && b.isPlayer && !b.dead) {
+        let nearestDist = 340;
+        let targetEnemy: Tank | null = null;
+        for (const enemy of this.enemies) {
+          if (enemy && enemy.hp > 0) {
+            const edist = Math.hypot((enemy.x + enemy.width / 2) - b.x, (enemy.y + enemy.height / 2) - b.y);
+            if (edist < nearestDist) {
+              nearestDist = edist;
+              targetEnemy = enemy;
+            }
+          }
+        }
+        if (targetEnemy) {
+          const targetAngle = Math.atan2(
+            (targetEnemy.y + targetEnemy.height / 2) - b.y,
+            (targetEnemy.x + targetEnemy.width / 2) - b.x
+          );
+          const currentSpeed = Math.hypot(b.vx, b.vy);
+          const currentAngle = Math.atan2(b.vy, b.vx);
+          let diffAngle = targetAngle - currentAngle;
+          while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+          while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+          const turnRate = Math.min(Math.abs(diffAngle), 4.5 * dt) * Math.sign(diffAngle);
+          const newAngle = currentAngle + turnRate;
+          b.vx = Math.cos(newAngle) * currentSpeed;
+          b.vy = Math.sin(newAngle) * currentSpeed;
+        }
       }
 
       // Check boundary
@@ -2442,6 +2584,28 @@ export class GameEngine {
             enemy.hp -= b.damage;
             b.dead = true;
 
+            // Special Ammo: Slow / Freeze effect (Plasma)
+            if (b.slowEffect) {
+              enemy.frozenTime = Math.max(enemy.frozenTime, 2.5);
+              soundEngine.playClockFreeze();
+            }
+
+            // Special Ammo: High Explosive Area of Effect (Splash Damage)
+            if (b.splashRadius && b.splashRadius > 0) {
+              particleSystem.emitBarrelExplosion(b.x, b.y, b.splashRadius);
+              for (const other of this.enemies) {
+                if (other !== enemy && other.hp > 0) {
+                  const odist = Math.hypot((other.x + other.width / 2) - b.x, (other.y + other.height / 2) - b.y);
+                  if (odist <= b.splashRadius) {
+                    other.hp -= Math.max(1, Math.round(b.damage * 0.75));
+                    if (other.hp <= 0) {
+                      this.handleEnemyDestroyed(other);
+                    }
+                  }
+                }
+              }
+            }
+
             if (enemy.hp <= 0) {
               this.handleEnemyDestroyed(enemy);
             } else {
@@ -2467,6 +2631,22 @@ export class GameEngine {
               this.player.hp -= b.damage;
               this.hitstopTimer = 0.05;
               this.addCameraShake(6);
+
+              // Emergency Repair Check (Upgrade Nanite Self-Repair)
+              if (this.player.hp <= 1 && !this.emergencyRepairUsedThisLife) {
+                const repairLvl = shopManager.getEmergencyRepairLevel();
+                if (repairLvl > 0) {
+                  this.emergencyRepairUsedThisLife = true;
+                  const healAmount = repairLvl === 1 ? 1 : (repairLvl === 2 ? 2 : 3);
+                  this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
+                  if (repairLvl >= 3) {
+                    this.player.shieldTime = Math.max(this.player.shieldTime, 3.5);
+                  }
+                  soundEngine.playPowerUp();
+                  particleSystem.emitPowerUpPickup(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, '#22c55e');
+                  this.addFloatText(this.player.x + 10, this.player.y - 14, `🔧 NANITE TỰ SỬA +${healAmount} HP!`, '#22c55e');
+                }
+              }
 
               if (this.player.hp <= 0) {
                 this.handlePlayerDeath();
@@ -2499,6 +2679,8 @@ export class GameEngine {
     // Trigger explosive visual effects & sounds
     particleSystem.emitBarrelExplosion(barrelX, barrelY, 38);
     soundEngine.playBarrelExplosion();
+    // Drop military coins from exploded barrel crate
+    this.spawnCoins(barrelX, barrelY, 12, false);
     // USER RULE: Khi các thùng bị nổ không cho hiệu ứng rung cả màn hình
 
     // USER RULE: Không hiện thông báo nổ thùng
@@ -2646,6 +2828,25 @@ export class GameEngine {
         this.killsSinceHunterDied++;
       }
     }
+
+    // Spawn military coins on enemy defeat
+    let coinAmount = 15;
+    let isLargeCoin = false;
+    if (enemy.type === 'SCOUT') coinAmount = 12;
+    else if (enemy.type === 'ASSAULT') coinAmount = 20;
+    else if (enemy.type === 'HEAVY') { coinAmount = 35; isLargeCoin = true; }
+    else if (enemy.type === 'ARTILLERY') coinAmount = 28;
+    else if (enemy.type === 'BOSS') {
+      coinAmount = this.stats.stage >= 21 ? 450 : (this.stats.stage >= 20 ? 350 : 250);
+      isLargeCoin = true;
+    }
+
+    if (enemy.isHunter) {
+      coinAmount += 50;
+      isLargeCoin = true;
+    }
+
+    this.spawnCoins(cx, cy, coinAmount, isLargeCoin);
 
     if (enemy.isFlashing || isBoss) {
       this.spawnPowerUp(cx, cy);
@@ -3630,6 +3831,9 @@ export class GameEngine {
 
     // 3. Power-ups
     this.renderPowerUps(ctx);
+
+    // 3.5. Tactical Coins & Gold Ingots
+    this.renderCoins(ctx);
 
     // 4. Tanks
     for (const enemy of this.enemies) {
@@ -6150,6 +6354,190 @@ export class GameEngine {
     }
   }
 
+  // --- Tactical Military Coins & Support Items ---
+  public spawnCoins(x: number, y: number, baseAmount: number, isLarge: boolean = false) {
+    const bountyMult = shopManager.getBountyMultiplier();
+    const totalAmount = Math.max(5, Math.round(baseAmount * bountyMult));
+
+    // Split into 1 to 4 coin drops on ground
+    const count = isLarge
+      ? Math.min(6, Math.max(2, Math.floor(totalAmount / 40)))
+      : Math.min(3, Math.max(1, Math.floor(totalAmount / 15)));
+    const amountPerCoin = Math.max(1, Math.floor(totalAmount / count));
+    const remainder = totalAmount - amountPerCoin * count;
+
+    for (let i = 0; i < count; i++) {
+      const val = amountPerCoin + (i === 0 ? remainder : 0);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 20 + Math.random() * 45;
+      const clampedX = Math.max(20, Math.min(this.canvasWidth - 20, x + (Math.random() - 0.5) * 16));
+      const clampedY = Math.max(20, Math.min(this.canvasHeight - 20, y + (Math.random() - 0.5) * 16));
+
+      this.coins.push({
+        id: `coin_${Date.now()}_${Math.random()}`,
+        x: clampedX,
+        y: clampedY,
+        value: val,
+        duration: 25.0,
+        blinkTimer: 0,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        isLarge: isLarge || val >= 30,
+      });
+    }
+
+    particleSystem.emitCoinBurst(x, y, isLarge);
+  }
+
+  public useSupportItem(id: SupportItemId): boolean {
+    if (this.isPaused || !this.isRunning) return false;
+    const inv = shopManager.getProfile().supportInventory[id] || 0;
+    if (inv <= 0) {
+      soundEngine.playHitMetal();
+      const pX = this.player ? this.player.x + this.player.width / 2 : this.canvasWidth / 2;
+      const pY = this.player ? this.player.y - 15 : this.canvasHeight / 2;
+      this.addFloatText(pX, pY, 'HẾT QUÂN NHU! VÀO SHOP MUA', '#ef4444');
+      return false;
+    }
+
+    if (!shopManager.consumeSupportItem(id)) return false;
+
+    if (id === 'AIRSTRIKE') {
+      // 1. Destroy all enemy bullets
+      this.bullets = this.bullets.filter(b => b.isPlayer);
+      // 2. Damage all active enemies by 2 HP
+      this.enemies.forEach(enemy => {
+        if (enemy && enemy.hp > 0) {
+          enemy.hp -= 2;
+          particleSystem.emitTankExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 28, '#ef4444', false);
+          if (enemy.hp <= 0) {
+            this.handleEnemyDestroyed(enemy);
+          }
+        }
+      });
+      soundEngine.playExplosion(true);
+      this.addCameraShake(10);
+      const pX = this.player ? this.player.x + this.player.width / 2 : this.canvasWidth / 2;
+      const pY = this.player ? this.player.y - 20 : this.canvasHeight / 2;
+      this.addFloatText(pX, pY, '☢️ KHÔNG KÍCH QUÂN SỰ DẢI THẢM!', '#ef4444');
+    } else if (id === 'CRYO_FREEZE') {
+      // Freeze all enemies for 8 seconds
+      this.clockFreezeTimer = Math.max(this.clockFreezeTimer, 8.0);
+      this.enemies.forEach(enemy => {
+        if (enemy) enemy.frozenTime = Math.max(enemy.frozenTime, 8.0);
+      });
+      soundEngine.playClockFreeze();
+      const pX = this.player ? this.player.x + this.player.width / 2 : this.canvasWidth / 2;
+      const pY = this.player ? this.player.y - 20 : this.canvasHeight / 2;
+      this.addFloatText(pX, pY, '❄️ BĂNG PHONG TOÀN ĐỊCH 8S!', '#38bdf8');
+    } else if (id === 'REPAIR_KIT') {
+      if (this.player && this.player.hp > 0) {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 2);
+        particleSystem.emitPowerUpPickup(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, '#22c55e');
+      }
+      if (!this.isBaseDestroyed && this.baseHp < this.stats.baseMaxHp) {
+        this.baseHp = Math.min(this.stats.baseMaxHp, this.baseHp + 1);
+        this.stats.baseHp = this.baseHp;
+      }
+      soundEngine.playPowerUp();
+      const pX = this.player ? this.player.x + this.player.width / 2 : this.canvasWidth / 2;
+      const pY = this.player ? this.player.y - 20 : this.canvasHeight / 2;
+      this.addFloatText(pX, pY, '🩹 CỨU THƯƠNG KHẨN CẤP: +2 HP!', '#22c55e');
+    }
+
+    this.syncStats();
+    return true;
+  }
+
+  // --- High-Fidelity 2D Tactical Coins & Gold Ingots ---
+  private renderCoins(ctx: CanvasRenderingContext2D) {
+    const time = performance.now();
+
+    for (const c of this.coins) {
+      if (c.dead) continue;
+      // Urgency blink when expiring (< 4s left)
+      if (c.duration < 4 && Math.floor(time / 110) % 2 === 0) continue;
+
+      ctx.save();
+      ctx.translate(c.x, c.y);
+
+      // Wobble animation / rotating sheen
+      const scaleX = Math.cos(time * 0.005 + c.x * 0.1);
+      const bob = Math.sin(time * 0.006 + c.y) * 2;
+      ctx.translate(0, bob);
+
+      // 1. Soft gold glow halo
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.2)';
+      ctx.beginPath();
+      ctx.arc(0, 0, c.isLarge ? 16 : 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Drop shadow
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.5)';
+      ctx.beginPath();
+      ctx.ellipse(1, 4, c.isLarge ? 11 : 7, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (c.isLarge) {
+        // Gold Bar Ingot
+        ctx.fillStyle = '#b45309'; // Shadow base
+        ctx.beginPath();
+        ctx.roundRect(-10, -5, 20, 10, 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f59e0b'; // Primary gold
+        ctx.beginPath();
+        ctx.roundRect(-9, -4.5, 18, 9, 1.5);
+        ctx.fill();
+
+        // Top highlight bevel
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(-8, -4, 16, 2);
+
+        // Specular glint
+        if (Math.floor(time / 200 + c.x) % 5 === 0) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(-4, -2, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Round Gold Military Coin
+        const radius = 7.5;
+        ctx.save();
+        ctx.scale(Math.abs(scaleX) * 0.8 + 0.2, 1);
+
+        // Coin outer rim
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner face
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius - 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Star / Emblem in center
+        ctx.fillStyle = '#ca8a04';
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Specular glint
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(-2, -2, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+  }
+
   private syncStats() {
     const cfg = BASE_TIERS[this.baseTier - 1];
     if (this.player) {
@@ -6182,27 +6570,35 @@ export class GameEngine {
     this.stats.weather = weatherSystem.currentWeather;
     this.stats.isWeatherEnabled = weatherSystem.isEnabled;
 
+    // Sync Shop Profile (Coins & Support inventory & Equipped tank/ammo)
+    const equippedTank = shopManager.getEquippedTankConfig();
+    const equippedAmmo = shopManager.getEquippedAmmoConfig();
+    this.stats.coins = shopManager.getProfile().coins;
+    this.stats.supportInventory = shopManager.getProfile().supportInventory;
+    this.stats.equippedTankName = equippedTank.name;
+    this.stats.equippedAmmoBadge = equippedAmmo.name;
+
     // Calculate real-time dynamic combat telemetry
     const tierIndex = this.player ? Math.min(this.player.tier, PLAYER_TIERS.length - 1) : 0;
     const tierCfg = PLAYER_TIERS[tierIndex];
     const speedBoostActive = this.speedBoostTimer > 0;
-    const currentSpeed = this.player ? this.player.speed : (tierCfg.speed + (speedBoostActive ? 35 : 0));
-    const reloadTime = this.player ? this.player.reloadMax : (speedBoostActive ? tierCfg.reloadMax * 0.8 : tierCfg.reloadMax);
+    const currentSpeed = this.player ? this.player.speed : (equippedTank.baseSpeed + (speedBoostActive ? 35 : 0));
+    const reloadTime = this.player ? this.player.reloadMax : (speedBoostActive ? equippedTank.baseReload * 0.8 : equippedTank.baseReload);
     const fireRate = Math.round((1 / Math.max(0.05, reloadTime)) * 10) / 10;
-    const bulletSpeed = Math.round(tierCfg.bulletSpeed * (speedBoostActive ? 1.15 : 1.0));
+    const bulletSpeed = Math.round(equippedTank.baseBulletSpeed * equippedAmmo.bulletSpeedMultiplier * (speedBoostActive ? 1.15 : 1.0));
 
     this.stats.combatStats = {
       speed: Math.round(currentSpeed),
-      baseSpeed: tierCfg.speed,
+      baseSpeed: equippedTank.baseSpeed,
       speedBoostActive,
       speedBoostRemaining: Math.round(this.speedBoostTimer * 10) / 10,
       bulletSpeed,
       reloadMax: Math.round(reloadTime * 100) / 100,
       fireRate,
-      doubleShot: tierCfg.doubleShot,
-      canBreakSteel: tierCfg.canBreakSteel,
+      doubleShot: this.player ? (equippedTank.doubleShot || this.player.tier >= 2) : equippedTank.doubleShot,
+      canBreakSteel: this.player ? (equippedTank.canBreakSteel || equippedAmmo.canBreakSteel || this.player.tier >= 3) : equippedTank.canBreakSteel,
       tier: tierIndex + 1,
-      tierName: tierCfg.name,
+      tierName: this.player ? `${equippedTank.name} (C${this.player.tier + 1})` : equippedTank.name,
     };
 
     // Calculate active power-up buffs with live countdowns

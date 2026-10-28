@@ -1042,7 +1042,7 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
           {activeTab === 'CONTROLS' && (
             <div className="space-y-3 min-w-0">
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2.5 min-w-0">
-                <h4 className="font-bold text-emerald-400 text-xs">BẢNG PHÍM ĐIỀU KHIỂN CHIẾN XA</h4>
+                <h4 className="font-bold text-emerald-400 text-xs">BẢNG PHÍM ĐIỀU KHIỂN CHIẾN XA & VŨ KHÍ</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                   <div className="flex items-center gap-2">
                     <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-white font-bold">W A S D</kbd>
@@ -1053,15 +1053,31 @@ export function GameGuideModal({ isOpen, onClose }: GameGuideModalProps) {
                     <span className="text-slate-300">Bắn đại bác</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-amber-300 font-bold">C</kbd>
+                    <span className="text-slate-300">Cửa hàng quân sự & nâng cấp</span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-amber-300 font-bold">U</kbd>
                     <span className="text-slate-300">Nâng cấp căn cứ</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-cyan-300 font-bold">M</kbd>
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-rose-300 font-bold">B</kbd>
+                    <span className="text-slate-300">Gọi không kích diệt địch (Airstrike)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-cyan-300 font-bold">F</kbd>
+                    <span className="text-slate-300">Bão băng đông cứng địch (Cryo)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-emerald-300 font-bold">R</kbd>
+                    <span className="text-slate-300">Kích hoạt sửa chữa khẩn cấp</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-purple-300 font-bold">M</kbd>
                     <span className="text-slate-300">Bật/tắt nhạc sảnh (BGM)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-emerald-300 font-bold">H</kbd>
+                    <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono text-sky-300 font-bold">H</kbd>
                     <span className="text-slate-300">Mở sổ tay tác chiến</span>
                   </div>
                   <div className="flex items-center gap-2">

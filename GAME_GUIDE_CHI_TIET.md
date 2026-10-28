@@ -157,9 +157,60 @@ Sở chỉ huy là biểu tượng **Đại Bàng Quân Đội** tại trung tâ
 - `Chuột Trái`: Khai hỏa đại bác ngắm bắn 360° tự do (chế độ chuột).
 - `Di chuyển Chuột`: Xoay tháp pháo ngắm bắn theo con trỏ chuột.
 - `Phím U`: Nâng cấp căn cứ chỉ huy tức thì khi đủ điểm.
+- `Phím C`: Mở Cửa Hàng Quân Sự & Trang Bị (Shop).
+- `Phím B`: Kích hoạt Không Kích Oanh Tạc (Airstrike Support).
+- `Phím F`: Kích hoạt Bão Băng Đông Cứng Địch (Cryo Freeze).
+- `Phím R`: Kích hoạt Bộ Sửa Chữa Chiến Xa Nanite (Repair Kit).
+- `Phím M`: Bật/tắt nhạc sảnh (BGM).
 - `Phím H`: Mở sổ tay tra cứu vũ khí và biểu tượng (trận đấu sẽ tự động tạm dừng).
-- `Phím P` hoặc `Phím Esc`: Tạm dừng trận đấu để vào menu cài đặt âm thanh / thời tiết.
+- `Phím P` hoặc `Phím Esc`: Tạm dừng trận đấu để vào menu cài đặt âm thanh / thời tiết / cửa hàng.
 
 ### Điều Khiển Màn Hình Cảm Ứng (Điện Thoại / Máy Tính Bảng):
 - Cụm D-Pad ảo bên trái: Điều khiển hướng di chuyển của xe.
 - Nút Bắn đỏ tròn bên phải: Nhấn giữ để xả đạn liên tục.
+- Các nút hỗ trợ nhanh trên thanh công cụ HUD: Nhấp trực tiếp vào biểu tượng túi tiền (🟡), Không kích, Bão băng, Sửa chữa hoặc Cửa hàng để thao tác ngay lập tức.
+
+---
+
+## 9. HỆ THỐNG CỬA HÀNG QUÂN SỰ, TIỀN TỆ & TRANG BỊ ĐẶC CHỦNG (SHOP SYSTEM)
+
+### 9.1 Cơ Chế Thu Thập Tiền Tác Chiến (Military Coins 🟡)
+- **Tiền rơi từ chiến xa địch:** Khi tiêu diệt bất kỳ xe tăng địch nào, đồng tiền xu hoặc thỏi vàng quân sự sẽ bung ra trên mặt đất:
+  - *Xe Trinh Sát (Scout):* 15 🟡
+  - *Xe Đột Kích (Assault):* 25 🟡
+  - *Xe Thiết Giáp (Heavy):* 45 🟡
+  - *Pháo Tự Hành (Artillery):* 60 🟡
+  - *Siêu Hạm Trùm (Titan Boss):* 250 🟡 (Bung hàng loạt thỏi vàng lớn)
+  - *Thùng Nổ Chiến Thuật (Barrel):* 20 🟡
+- **Tự động bảo lưu:** Tiền kiếm được lưu trữ vĩnh viễn trên thiết bị (LocalStorage Profile), có thể tích lũy qua các màn chơi và sử dụng mọi lúc.
+- **Nam Châm Tác Chiến:** Nâng cấp Nam Châm sẽ tự động hút tiền về xe trong bán kính 60 - 240 pixels.
+- **Tiền Thưởng Truy Nã (Bounty Bonus):** Tăng thêm từ +15% đến +100% số tiền nhặt được.
+
+### 9.2 Danh Mục 5 Chiến Xa Mở Khóa (Tank Chassis)
+1. **T-34 Tiên Phong (Vanguard):** Khung thân khởi đầu miễn phí, tốc độ cân bằng 115 px/s, 3 HP máu, thời gian nạp đạn 0.45s.
+2. **Striker Sấm Sét (Striker):** Xe cơ động cao 135 px/s, nạp đạn cực nhanh 0.35s, 3 HP máu, sơn màu xanh Cyan thể thao (Giá: 450 🟡).
+3. **Titan Thiết Giáp (Titan Brawler):** Khung thân bọc thép hạng nặng 5 HP máu, tốc độ 105 px/s, nạp đạn 0.40s, sơn màu đỏ Crimson rực lửa (Giá: 900 🟡).
+4. **Siege Thần Công (Siege Breaker):** Pháo kích tầm xa cực đại 6 HP máu, nạp đạn 0.48s, đạn uy lực mạnh mẽ (Giá: 1,600 🟡).
+5. **Apex Thống Soái (Apex Dominator):** Chiến xa tối thượng với 7 HP máu, tốc độ 125 px/s, nạp đạn chớp nhoáng 0.30s, phủ lớp sơn mạ vàng Hoàng Kim lộng lẫy (Giá: 3,000 🟡).
+
+### 9.3 Danh Mục 5 Loại Đạn Pháo Đặc Chủng (Special Ammo)
+1. **Đạn Thép Tiêu Chuẩn (Standard AP):** Miễn phí mặc định, sát thương 1 HP, vận tốc đạn 260 px/s.
+2. **Đạn Động Năng Xuyên Giáp APFSDS:** Tăng vận tốc đạn lên 360 px/s, sát thương 2 HP, bay xé gió (Giá: 400 🟡).
+3. **Đạn Nổ Mạnh Diện Rộng (High Explosive - HE):** Tạo vụ nổ sóng chấn bán kính 55px khi trúng đích, gây sát thương lan cho các xe địch đứng gần (Giá: 850 🟡).
+4. **Đạn Năng Lượng Plasma:** Đạn phát sáng màu xanh tím bí ẩn, làm chậm và đóng băng xe địch trúng đạn trong 2.5 giây (Giá: 1,400 🟡).
+5. **Đạn Tên Lửa Tầm Nhiệt Thông Minh (Homing Missiles):** Tự động bẻ góc quỹ đạo đuổi theo xe tăng địch gần nhất, tỷ lệ trúng mục tiêu 100% (Giá: 2,200 🟡).
+
+### 9.4 Danh Mục 7 Nâng Cấp Công Nghệ Vĩnh Viễn (Permanent Tech Upgrades)
+- **Vỏ Giáp Gia Cố (Hull Armor):** Tăng từ +1 đến +5 vạch HP máu tối đa cho xe tăng.
+- **Động Cơ Tăng Áp (Turbo Engine):** Tăng thêm từ +8 px/s đến +40 px/s tốc độ di chuyển.
+- **Hệ Thống Tiếp Đạn Tự Động (Auto-Loader):** Rút ngắn từ 10% đến 40% thời gian hồi chiêu nạp đạn.
+- **Bộ Hút Từ Tính (Coin Magnet):** Tự động hút toàn bộ tiền xu và thỏi vàng trong bán kính rộng về xe.
+- **Tiền Thưởng Truy Nã (Bounty Bonus):** Tăng từ +15% đến +100% giá trị mỗi đồng tiền thu thập.
+- **Khiên Từ Trường Xuất Kích (Starting Shield):** Cho phép bạn khởi đầu mỗi mạng sống với khiên bất tử từ 4s đến 12s.
+- **Nanite Tự Sửa Chữa (Emergency Nanite):** Khi xe chỉ còn 1 HP, vi robot nano sẽ lập tức tự động sửa chữa khôi phục từ +1 đến +3 HP (và kích hoạt khiên 3.5s ở cấp cao).
+
+### 9.5 Vật Phẩm Tiếp Tế Tiêu Hao Tác Chiến (Support Items)
+Có thể mua trong Cửa hàng và bấm phím tắt để sử dụng nhanh giữa trận:
+- **[Phím B] Oanh Tạc Không Kích (Airstrike Beacon):** Gọi máy bay ném bom dội bão lửa tiêu diệt toàn bộ xe tăng địch đang có mặt trên bản đồ (Giá: 120 🟡 / lần).
+- **[Phím F] Lựu Đạn Bão Băng (Cryo Freeze Canister):** Đóng băng toàn bộ lực lượng địch trong 7 giây (Giá: 80 🟡 / lần).
+- **[Phím R] Hộp Cứu Thương Khẩn Cấp (Emergency Repair Kit):** Hồi phục đầy đủ 100% thanh HP của chiến xa ngay lập tức (Giá: 60 🟡 / lần).

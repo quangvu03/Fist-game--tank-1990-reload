@@ -10,6 +10,7 @@ import {
   CloudRain,
   Snowflake,
   Music,
+  Store,
 } from 'lucide-react';
 import { WeatherType } from '../types/game';
 
@@ -22,6 +23,7 @@ interface PauseModalProps {
   isMusicMuted?: boolean;
   onToggleMusic?: () => void;
   onOpenGuide: () => void;
+  onOpenShop?: () => void;
   weather?: WeatherType;
   isWeatherEnabled?: boolean;
   onToggleWeather?: () => void;
@@ -36,6 +38,7 @@ export function PauseModal({
   isMusicMuted = false,
   onToggleMusic,
   onOpenGuide,
+  onOpenShop,
   weather = 'CLEAR',
   isWeatherEnabled = false,
   onToggleWeather,
@@ -67,13 +70,24 @@ export function PauseModal({
             <span>TIẾP TỤC CHIẾN ĐẤU (P / ESC)</span>
           </button>
 
-          {/* 2. Sổ tay tra cứu quân sự (Được chuyển vào mục tạm dừng theo yêu cầu) */}
+          {/* 2. Cửa hàng quân sự */}
+          {onOpenShop && (
+            <button
+              onClick={onOpenShop}
+              className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-xl transition-all shadow-md shadow-amber-500/20 active:scale-[0.98] cursor-pointer"
+            >
+              <Store className="w-4 h-4" />
+              <span>CỬA HÀNG QUÂN SỰ</span>
+            </button>
+          )}
+
+          {/* 3. Sổ tay tra cứu quân sự */}
           <button
             onClick={onOpenGuide}
             className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-xl transition-all cursor-pointer"
           >
             <BookOpen className="w-4 h-4" />
-            <span>SỔ TAY</span>
+            <span>SỔ TAY QUÂN SỰ</span>
           </button>
 
           {/* 3. Chơi lại Level này */}

@@ -1,4 +1,4 @@
-import { Trophy, Skull, Play, RotateCcw, Home, Award } from 'lucide-react';
+import { Trophy, Skull, Play, RotateCcw, Home, Award, Store } from 'lucide-react';
 import { GameStats } from '../types/game';
 import { ENEMY_CONFIGS } from '../game/constants';
 
@@ -10,6 +10,7 @@ interface GameOverModalProps {
   onNextStage: () => void;
   onRestart: () => void;
   onQuitToTitle: () => void;
+  onOpenShop?: () => void;
 }
 
 export function GameOverModal({
@@ -20,6 +21,7 @@ export function GameOverModal({
   onNextStage,
   onRestart,
   onQuitToTitle,
+  onOpenShop,
 }: GameOverModalProps) {
   const isWon = isVictory || isStageClear;
   const isNewHighScore = stats.score >= stats.highScore && stats.score > 0;
@@ -151,6 +153,16 @@ export function GameOverModal({
             >
               <RotateCcw className="w-4 h-4" />
               <span>CHƠI LẠI TRẬN MỚI</span>
+            </button>
+          )}
+
+          {onOpenShop && (
+            <button
+              onClick={onOpenShop}
+              className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/60 rounded-lg transition-colors cursor-pointer shadow-sm"
+            >
+              <Store className="w-4 h-4" />
+              <span>CỬA HÀNG QUÂN SỰ (TIỀN: {stats.coins?.toLocaleString() || 0} 🟡)</span>
             </button>
           )}
 

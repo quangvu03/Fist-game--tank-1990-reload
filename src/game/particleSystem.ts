@@ -1041,6 +1041,118 @@ export class ParticleSystem {
     }
   }
 
+  // --- Coin Sparkle and Pickup Burst ---
+  public emitCoinBurst(x: number, y: number, isLarge: boolean = false) {
+    const count = isLarge ? 14 : 7;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+      const speed = 40 + Math.random() * (isLarge ? 90 : 50);
+      const life = 0.35 + Math.random() * 0.3;
+      this.addParticle({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        drag: 0.92,
+        gravity: 25,
+        size: isLarge ? 3 : 2,
+        startSize: isLarge ? 3.5 : 2.5,
+        endSize: 0.5,
+        life,
+        maxLife: life,
+        color: Math.random() < 0.5 ? '#facc15' : '#fef08a',
+        alpha: 1.0,
+        type: 'spark',
+        shape: 'spark_line',
+      });
+    }
+  }
+
+  public emitCoinPickup(x: number, y: number) {
+    // Expanding gold shimmer ring
+    this.addParticle({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      drag: 1,
+      size: 4,
+      startSize: 4,
+      endSize: 22,
+      life: 0.22,
+      maxLife: 0.22,
+      color: '#facc15',
+      alpha: 0.9,
+      type: 'shockwave',
+      shape: 'ring',
+    });
+    // Golden sparks upward
+    for (let i = 0; i < 5; i++) {
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
+      const speed = 45 + Math.random() * 55;
+      const life = 0.25 + Math.random() * 0.2;
+      this.addParticle({
+        x: x + (Math.random() - 0.5) * 10,
+        y: y + (Math.random() - 0.5) * 10,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        drag: 0.9,
+        size: 2,
+        startSize: 2.5,
+        endSize: 0.5,
+        life,
+        maxLife: life,
+        color: '#fef08a',
+        alpha: 1.0,
+        type: 'spark',
+        shape: 'circle',
+      });
+    }
+  }
+
+  public emitPowerUpPickup(x: number, y: number, color: string = '#22c55e') {
+    // Shimmering aura pulse ring
+    this.addParticle({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      drag: 1,
+      size: 6,
+      startSize: 6,
+      endSize: 32,
+      life: 0.3,
+      maxLife: 0.3,
+      color,
+      alpha: 0.9,
+      type: 'shockwave',
+      shape: 'ring',
+    });
+
+    // Rising nanite sparkles
+    for (let i = 0; i < 12; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const speed = 25 + Math.random() * 50;
+      const life = 0.3 + Math.random() * 0.3;
+      this.addParticle({
+        x: x + (Math.random() - 0.5) * 12,
+        y: y + (Math.random() - 0.5) * 12,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed - 20,
+        drag: 0.92,
+        size: 2.5,
+        startSize: 3,
+        endSize: 0.5,
+        life,
+        maxLife: life,
+        color,
+        alpha: 1.0,
+        type: 'spark',
+        shape: 'circle',
+      });
+    }
+  }
+
   // --- Update Physics Loop ---
   public update(dt: number) {
     for (let i = this.particles.length - 1; i >= 0; i--) {

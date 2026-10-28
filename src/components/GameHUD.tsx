@@ -8,8 +8,14 @@ import {
   Skull,
   Crosshair,
   Music,
+  Coins,
+  Store,
+  Radio,
+  Snowflake,
+  Wrench,
 } from 'lucide-react';
 import { GameStats, PlayerCombatStats } from '../types/game';
+import { SupportItemId } from '../types/shop';
 
 interface GameHUDProps {
   stats: GameStats;
@@ -19,6 +25,8 @@ interface GameHUDProps {
   onUpgradeBase: () => void;
   isMusicMuted?: boolean;
   onToggleMusic?: () => void;
+  onOpenShop?: () => void;
+  onUseSupportItem?: (id: SupportItemId) => void;
 }
 
 export function GameHUD({
@@ -29,6 +37,8 @@ export function GameHUD({
   onUpgradeBase,
   isMusicMuted = false,
   onToggleMusic,
+  onOpenShop,
+  onUseSupportItem,
 }: GameHUDProps) {
   const isSurvival = stats.gameMode === 'SURVIVAL';
 
@@ -149,19 +159,117 @@ export function GameHUD({
 
         {/* 7. ĐIỂM */}
         <div
-          className="flex items-center gap-1 bg-amber-950/40 border border-amber-500/60 px-2.5 py-1 rounded-lg shadow-inner shrink-0"
+          className="flex items-center gap-1 bg-amber-950/40 border border-amber-500/60 px-2 py-1 rounded-lg shadow-inner shrink-0"
           title="Điểm số chiến đấu"
         >
           <span className="text-[9px] font-black text-amber-400">ĐIỂM</span>
-          <span className="font-mono text-xs sm:text-sm font-black text-amber-300 tabular-nums">
+          <span className="font-mono text-xs font-black text-amber-300 tabular-nums">
             {stats.score.toLocaleString()}
           </span>
         </div>
 
+        {/* 7.5. TIỀN XU (COINS) */}
+        <div
+          className="flex items-center gap-1.5 bg-yellow-950/50 border border-yellow-500/60 px-2.5 py-1 rounded-lg shadow-inner shrink-0"
+          title={`Tiền xu chiến lợi phẩm: ${(stats.coins || 0).toLocaleString()} xu`}
+        >
+          <Coins className="w-3.5 h-3.5 text-yellow-400 shrink-0 animate-pulse" />
+          <span className="font-mono text-xs font-black text-yellow-300 tabular-nums">
+            {(stats.coins || 0).toLocaleString()}
+          </span>
+        </div>
+
+        {/* 7.8. VŨ KHÍ & ĐẠN ĐANG TRANG BỊ */}
+        {stats.equippedAmmoBadge && (
+          <div
+            className="hidden lg:flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 shrink-0 text-[10px]"
+            title={`Đạn đang nạp: ${stats.equippedAmmoBadge}`}
+          >
+            <Crosshair className="w-3 h-3 text-cyan-400 shrink-0" />
+            <span className="font-bold text-slate-300 truncate max-w-[90px]">
+              {stats.equippedAmmoBadge}
+            </span>
+          </div>
+        )}
+
         {/* Vạch ngăn cách */}
         <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
 
-        {/* 8. Tạm dừng / Tiếp tục */}
+        {/* 8. QUÂN NHU HỖ TRỢ NHANH (B, F, R) */}
+        {onUseSupportItem && stats.supportInventory && (
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Không kích (B) */}
+            <button
+              onClick={() => onUseSupportItem('AIRSTRIKE')}
+              disabled={(stats.supportInventory.AIRSTRIKE || 0) <= 0}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer shrink-0 ${
+                (stats.supportInventory.AIRSTRIKE || 0) > 0
+                  ? 'bg-red-950/80 text-red-300 border-red-700/80 hover:bg-red-900 active:scale-95'
+                  : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed opacity-60'
+              }`}
+              title="Không kích hạt nhân dải thảm toàn bản đồ (Phím B)"
+            >
+              <Radio className="w-3 h-3 text-red-400 shrink-0" />
+              <span>B</span>
+              <span className="font-mono font-black text-white px-1 bg-slate-950/60 rounded">
+                {stats.supportInventory.AIRSTRIKE || 0}
+              </span>
+            </button>
+
+            {/* Đóng băng (F) */}
+            <button
+              onClick={() => onUseSupportItem('CRYO_FREEZE')}
+              disabled={(stats.supportInventory.CRYO_FREEZE || 0) <= 0}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer shrink-0 ${
+                (stats.supportInventory.CRYO_FREEZE || 0) > 0
+                  ? 'bg-sky-950/80 text-sky-300 border-sky-700/80 hover:bg-sky-900 active:scale-95'
+                  : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed opacity-60'
+              }`}
+              title="Đóng băng toàn bộ xe tăng địch trong 8 giây (Phím F)"
+            >
+              <Snowflake className="w-3 h-3 text-sky-400 shrink-0" />
+              <span>F</span>
+              <span className="font-mono font-black text-white px-1 bg-slate-950/60 rounded">
+                {stats.supportInventory.CRYO_FREEZE || 0}
+              </span>
+            </button>
+
+            {/* Cứu thương (R) */}
+            <button
+              onClick={() => onUseSupportItem('REPAIR_KIT')}
+              disabled={(stats.supportInventory.REPAIR_KIT || 0) <= 0}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer shrink-0 ${
+                (stats.supportInventory.REPAIR_KIT || 0) > 0
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80 hover:bg-emerald-900 active:scale-95'
+                  : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed opacity-60'
+              }`}
+              title="Cứu thương & phục hồi thân xe khẩn cấp +2 HP (Phím R)"
+            >
+              <Wrench className="w-3 h-3 text-emerald-400 shrink-0" />
+              <span>R</span>
+              <span className="font-mono font-black text-white px-1 bg-slate-950/60 rounded">
+                {stats.supportInventory.REPAIR_KIT || 0}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Nút CỬA HÀNG QUÂN SỰ (SHOP) */}
+        {onOpenShop && (
+          <button
+            onClick={onOpenShop}
+            title="Mở Cửa Hàng Quân Sự: Mua xe tăng, nâng cấp đạn và vật phẩm tác chiến"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer shrink-0"
+          >
+            <Store className="w-3.5 h-3.5 shrink-0" />
+            <span>CỬA HÀNG</span>
+          </button>
+        )}
+
+        {/* Vạch ngăn cách */}
+        <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
+
+        {/* 9. Tạm dừng / Tiếp tục */}
         <button
           onClick={onTogglePause}
           title={isPaused ? 'Tiếp tục trận đấu (Phím P hoặc Esc)' : 'Tạm dừng trận đấu & Cài đặt / Sổ tay (Phím P hoặc Esc)'}
@@ -184,7 +292,7 @@ export function GameHUD({
           )}
         </button>
 
-        {/* 9. Nút Tắt/Bật Nhạc Sảnh (Bên cạnh nút Tạm Dừng) */}
+        {/* 10. Nút Tắt/Bật Nhạc Sảnh */}
         {onToggleMusic && (
           <button
             onClick={onToggleMusic}
@@ -233,7 +341,7 @@ export function GameFooter({ highScore, combatStats }: GameFooterProps) {
         )}
 
         <div className="flex items-center gap-2 border-slate-700 sm:border-l sm:pl-3">
-          <span>WASD: Lái · Space: Bắn · <b>U: Nâng Cấp</b> · <b>P: Tạm Dừng</b> · <b>M: Bật/Tắt Nhạc</b></span>
+          <span>WASD: Lái · Space: Bắn · <b>B: Không Kích</b> · <b>F: Băng Phong</b> · <b>R: Hồi Máu</b> · <b>U: Căn Cứ</b> · <b>P: Tạm Dừng</b></span>
           <span>·</span>
           <span>
             Kỷ lục: <b className="text-amber-300 font-mono">{highScore.toLocaleString()}</b>

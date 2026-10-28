@@ -69,6 +69,10 @@ export interface Bullet {
   canBreakSteel: boolean;
   isMissile?: boolean;
   dead?: boolean;
+  splashRadius?: number;
+  slowEffect?: boolean;
+  homing?: boolean;
+  color?: string;
 }
 
 export type ParticleType =
@@ -122,6 +126,19 @@ export interface PowerUp {
   dead?: boolean;
 }
 
+export interface CoinDrop {
+  id: string;
+  x: number;
+  y: number;
+  value: number;
+  duration: number; // Disappears after 25s if not picked up
+  blinkTimer: number;
+  vx: number;
+  vy: number;
+  isLarge?: boolean;
+  dead?: boolean;
+}
+
 export interface FloatText {
   id: string;
   x: number;
@@ -170,7 +187,7 @@ export interface ActiveBuffInfo {
 export interface GameStats {
   score: number;
   highScore: number;
-  coins: number;
+  coins?: number;
   lives: number;
   playerHp: number;
   playerMaxHp: number;

@@ -10,6 +10,8 @@ import { PauseModal } from './components/PauseModal';
 import { GameOverModal } from './components/GameOverModal';
 import { TouchControls } from './components/TouchControls';
 import { GameGuideModal } from './components/GameGuideModal';
+import { ShopModal } from './components/ShopModal';
+import { SupportItemId } from './types/shop';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -22,7 +24,9 @@ export default function App() {
   const [isMuted, setIsMuted] = useState<boolean>(() => soundEngine.getMuted());
   const [isMusicMuted, setIsMusicMuted] = useState<boolean>(() => musicEngine.getMuted());
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
+  const [isShopOpen, setIsShopOpen] = useState<boolean>(false);
   const wasPlayingBeforeGuideRef = useRef<boolean>(false);
+  const wasPlayingBeforeShopRef = useRef<boolean>(false);
   const prevGameStatusRef = useRef<GameStatus>('TITLE');
 
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
@@ -31,6 +35,7 @@ export default function App() {
   const [stats, setStats] = useState<GameStats>({
     score: 0,
     highScore: 0,
+    coins: 0,
     lives: 3,
     playerHp: 3,
     playerMaxHp: 3,
@@ -317,6 +322,32 @@ export default function App() {
     }
   }, [gameStatus]);
 
+  // Open shop modal
+  const handleOpenShop = useCallback(() => {
+    if (gameStatus === 'PLAYING') {
+      engineRef.current?.pause();
+      wasPlayingBeforeShopRef.current = true;
+      setGameStatus('PAUSED');
+    }
+    setIsShopOpen(true);
+  }, [gameStatus]);
+
+  // Close shop modal
+  const handleCloseShop = useCallback(() => {
+    setIsShopOpen(false);
+    engineRef.current?.refreshShopCustomization();
+    if (wasPlayingBeforeShopRef.current && gameStatus === 'PAUSED') {
+      engineRef.current?.resume();
+      setGameStatus('PLAYING');
+      wasPlayingBeforeShopRef.current = false;
+    }
+  }, [gameStatus]);
+
+  // Use consumable tactical support item
+  const handleUseSupportItem = useCallback((id: SupportItemId) => {
+    engineRef.current?.useSupportItem(id);
+  }, []);
+
   // Quit to Title
   const handleQuitToTitle = useCallback(() => {
     if (engineRef.current) {
@@ -328,9 +359,19 @@ export default function App() {
     setGameStatus('TITLE');
   }, []);
 
-  // Global pause shortcut (Escape or KeyP) and Guide toggle (KeyH)
+  // Global pause shortcut (Escape or KeyP) and Guide toggle (KeyH), Shop toggle (KeyC)
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
+      if (e.code === 'KeyC') {
+        e.preventDefault();
+        if (isShopOpen) {
+          handleCloseShop();
+        } else {
+          handleOpenShop();
+        }
+        return;
+      }
+
       if (e.code === 'KeyH') {
         e.preventDefault();
         if (isGuideOpen) {
@@ -342,6 +383,11 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
+        if (isShopOpen) {
+          e.preventDefault();
+          handleCloseShop();
+          return;
+        }
         if (isGuideOpen) {
           e.preventDefault();
           handleCloseGuide();
@@ -370,7 +416,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [gameStatus, handleTogglePause, handleToggleMusic, isGuideOpen, handleOpenGuide, handleCloseGuide]);
+  }, [gameStatus, handleTogglePause, handleToggleMusic, isGuideOpen, handleOpenGuide, handleCloseGuide, isShopOpen, handleOpenShop, handleCloseShop]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -414,6 +460,8 @@ export default function App() {
           onUpgradeBase={handleUpgradeBase}
           isMusicMuted={isMusicMuted}
           onToggleMusic={handleToggleMusic}
+          onOpenShop={handleOpenShop}
+          onUseSupportItem={handleUseSupportItem}
         />
 
         {/* MAP CỦA GAME: SÁT VIỀN 100%, ĐỘ CAO VÀ RỘNG TỐI ĐA TRÊN MÀN HÌNH */}
@@ -435,8 +483,8 @@ export default function App() {
         {/* THANH TRẠNG THÁI DƯỚI (CĂN GIỮA): TỐC ĐỘ, HỎA LỰC, PHÍM TẮT & KỶ LỤC */}
         <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
 
-        {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh SFX & BGM, Điều khiển) */}
-        {gameStatus === 'PAUSED' && !isGuideOpen && (
+        {/* Pause Modal (Chứa Sổ tay, Thời tiết, Âm thanh SFX & BGM, Điều khiển, Cửa hàng) */}
+        {gameStatus === 'PAUSED' && !isGuideOpen && !isShopOpen && (
           <PauseModal
             onResume={handleTogglePause}
             onRestartStage={handleRestartStage}
@@ -446,6 +494,7 @@ export default function App() {
             isMusicMuted={isMusicMuted}
             onToggleMusic={handleToggleMusic}
             onOpenGuide={handleOpenGuide}
+            onOpenShop={handleOpenShop}
             weather={stats.weather}
             isWeatherEnabled={stats.isWeatherEnabled}
             onToggleWeather={handleToggleWeather}
@@ -465,6 +514,7 @@ export default function App() {
             onNextStage={handleNextStage}
             onRestart={handleRestartStage}
             onQuitToTitle={handleQuitToTitle}
+            onOpenShop={handleOpenShop}
           />
         )}
       </div>
@@ -480,6 +530,7 @@ export default function App() {
             onToggleMusic={handleToggleMusic}
             highScore={stats.highScore}
             onOpenGuide={handleOpenGuide}
+            onOpenShop={handleOpenShop}
           />
         </div>
       )}
@@ -488,6 +539,15 @@ export default function App() {
       <GameGuideModal
         isOpen={isGuideOpen}
         onClose={handleCloseGuide}
+      />
+
+      {/* 4. Global Military Shop Modal */}
+      <ShopModal
+        isOpen={isShopOpen}
+        onClose={handleCloseShop}
+        onProfileUpdated={() => {
+          engineRef.current?.refreshShopCustomization();
+        }}
       />
     </main>
   );

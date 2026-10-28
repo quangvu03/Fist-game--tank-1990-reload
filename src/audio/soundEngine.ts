@@ -600,6 +600,70 @@ class SoundEngine {
       // Safe guard
     }
   }
+
+  // --- Coin Pickup Chime ---
+  public playCoinPickup() {
+    if (this.isMuted) return;
+    try {
+      this.resumeCtx();
+      if (!this.ctx || !this.masterGain) return;
+
+      const t = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(987.77, t); // B5
+      osc1.frequency.setValueAtTime(1318.51, t + 0.06); // E6
+
+      osc2.frequency.setValueAtTime(1975.53, t); // B6 shimmer
+      osc2.frequency.setValueAtTime(2637.02, t + 0.06); // E7
+
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc1.start(t);
+      osc2.start(t);
+      osc1.stop(t + 0.28);
+      osc2.stop(t + 0.28);
+    } catch {
+      // Safe guard
+    }
+  }
+
+  // --- Shop Purchase Fanfare ---
+  public playPurchaseSuccess() {
+    if (this.isMuted) return;
+    try {
+      this.resumeCtx();
+      if (!this.ctx || !this.masterGain) return;
+
+      const t = this.ctx.currentTime;
+      const freqs = [523.25, 659.25, 783.99, 1046.5]; // C5 - E5 - G5 - C6
+      freqs.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t + idx * 0.07);
+
+        gain.gain.setValueAtTime(0.25, t + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.07 + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+        osc.start(t + idx * 0.07);
+        osc.stop(t + idx * 0.07 + 0.25);
+      });
+    } catch {
+      // Safe guard
+    }
+  }
 }
 
 export const soundEngine = new SoundEngine();

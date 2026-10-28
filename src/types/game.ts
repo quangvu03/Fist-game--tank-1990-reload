@@ -52,7 +52,8 @@ export interface Tank {
   tracksOffset: number;
   stuckTimer?: number;
   currentDecisionTimer?: number;
-  isHunter?: boolean; // Xe tăng đặc nhiệm truy lùng & bám đuổi tiêu diệt người chơi
+  isHunter?: boolean; // Xe tăng đặc nhiệm truy lùng (nòng 4 hướng chính, giữ khoảng cách)
+  is360Boss?: boolean; // Siêu Trùm có tháp pháo xoay tự do 360 độ, HP cực trâu, tốc độ chậm, di chuyển giữ cự ly thông minh
 }
 
 export interface Bullet {
@@ -169,6 +170,7 @@ export interface ActiveBuffInfo {
 export interface GameStats {
   score: number;
   highScore: number;
+  coins: number;
   lives: number;
   playerHp: number;
   playerMaxHp: number;
@@ -192,5 +194,8 @@ export interface GameStats {
   isWeatherEnabled: boolean;
   combatStats: PlayerCombatStats;
   activeBuffs: ActiveBuffInfo[];
+  supportInventory?: Record<string, number>;
+  equippedTankName?: string;
+  equippedAmmoBadge?: string;
   zoom?: number;
 }

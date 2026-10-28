@@ -185,7 +185,7 @@ export const ENEMY_CONFIGS: Record<EnemyType, {
     name: 'Chiến Hạm Titan Tối Thượng',
     speed: 65,
     hp: 14,
-    reloadMax: 0.8,
+    reloadMax: 2.4, // Bắn chậm hơn để người chơi có thời gian né tránh và phản công
     bulletSpeed: 270,
     scoreValue: 1500,
     color: '#e11d48',

@@ -73,7 +73,7 @@ export function PauseModal({
             className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-xl transition-all cursor-pointer"
           >
             <BookOpen className="w-4 h-4" />
-            <span>SỔ TAY TRA CỨU & QUÂN SỰ</span>
+            <span>SỔ TAY</span>
           </button>
 
           {/* 3. Chơi lại Level này */}

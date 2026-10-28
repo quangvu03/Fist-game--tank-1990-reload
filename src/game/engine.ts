@@ -84,6 +84,11 @@ export class GameEngine {
   private nextSpawnIndex: number = 0;
   private spawnCooldown: number = 1.0;
 
+  // Hunter Tank Lifecycle Management (Sinh ra từ xe tăng mới sau thời gian hoặc số lượng địch bị hạ)
+  private hunterCooldownTimer: number = 2.0;
+  private killsSinceHunterDied: number = 0;
+  private isHunterPending: boolean = true;
+
   // Death / Stage state guards
   private isPlayerDying: boolean = false;
   private isStageEnding: boolean = false;
@@ -422,6 +427,9 @@ export class GameEngine {
     this.spawnPlayer(prevTier);
 
     this.spawnCooldown = 0.5;
+    this.hunterCooldownTimer = 2.0;
+    this.killsSinceHunterDied = 0;
+    this.isHunterPending = true;
     this.syncStats();
   }
 
@@ -725,6 +733,34 @@ export class GameEngine {
     const reloadMultiplier = Math.max(0.80, 1.25 - (stage - 1) * 0.05);
     const scaledReloadMax = Math.round(cfg.reloadMax * reloadMultiplier * 100) / 100;
 
+    // Configure Boss attributes per user request:
+    // "1 boss như xe tăng truy sát hiện tại vậy có nòng xoay 360 di chuyển như vậy nhưng hp trâu hơn và tốc độ chậm hơn"
+    const is360Boss = isBoss;
+    let effectiveHp = cfg.hp;
+    let effectiveSpeed = scaledSpeed;
+    let effectiveReloadMax = scaledReloadMax;
+    let enemyName = cfg.name;
+    let enemyColor = cfg.color;
+
+    if (isBoss) {
+      effectiveHp = stage >= 21 ? 24 : (stage >= 20 ? 20 : (stage >= 15 ? 18 : 14)); // 24 HP ở Màn 21, 20 HP ở Màn 20, 14 HP ở Màn 10
+      effectiveSpeed = 46; // Tốc độ chậm hơn, lừng lững uy nghi
+      effectiveReloadMax = 2.4; // Bắn chậm hơn (2.4s giữa các đợt nã đạn) để người chơi có thời gian phản ứng né đạn
+      enemyName = stage === 20 ? 'Siêu Trùm Pháo Tháp 360°' : (stage === 21 ? 'Đại Soái Titan 360°' : 'Chiến Hạm Titan Tối Thượng');
+      enemyColor = '#e11d48';
+    }
+
+    // Check if this newly spawned tank should be designated as the Hunter (regular hunter, not boss)
+    const hasLivingHunter = this.enemies.some(e => e && e.hp > 0 && e.isHunter);
+    const shouldBeHunter = !isBoss && !hasLivingHunter && this.isHunterPending && (this.hunterCooldownTimer <= 0 || this.killsSinceHunterDied >= 3);
+
+    if (shouldBeHunter) {
+      effectiveSpeed = Math.max(scaledSpeed, 85);
+      effectiveReloadMax = Math.min(scaledReloadMax, 0.9);
+      enemyName = `Truy Sát ${cfg.name}`;
+      enemyColor = '#ef4444';
+    }
+
     const enemy: Tank = {
       id: `enemy_${Date.now()}_${Math.random()}`,
       type: enemyType,
@@ -734,26 +770,40 @@ export class GameEngine {
       height: size,
       dir: 'DOWN',
       turretAngle: Math.PI / 2,
-      speed: scaledSpeed,
-      maxHp: cfg.hp,
-      hp: cfg.hp,
+      speed: effectiveSpeed,
+      maxHp: effectiveHp,
+      hp: effectiveHp,
       tier: isBoss ? 3 : 1,
       isPlayer: false,
       isFlashing,
-      reloadTimer: Math.random() * scaledReloadMax,
-      reloadMax: scaledReloadMax,
+      reloadTimer: isBoss ? 1.8 : (shouldBeHunter ? 0.6 : Math.random() * scaledReloadMax),
+      reloadMax: effectiveReloadMax,
       shieldTime: 0,
       frozenTime: 0,
-      scoreValue: cfg.scoreValue,
-      name: cfg.name,
-      color: cfg.color,
+      scoreValue: cfg.scoreValue + (shouldBeHunter ? 150 : (isBoss ? (stage >= 21 ? 2000 : (stage >= 20 ? 1500 : 500)) : 0)),
+      name: enemyName,
+      color: enemyColor,
       tracksOffset: 0,
       stuckTimer: 0,
-      currentDecisionTimer: 0.5 + Math.random() * 1.0,
+      currentDecisionTimer: (shouldBeHunter || isBoss) ? 0.2 : (0.5 + Math.random() * 1.0),
+      isHunter: shouldBeHunter,
+      is360Boss,
     };
 
+    if (isBoss) {
+      this.addFloatText(spawn.x + size / 2, spawn.y - 14, `👑 ${enemyName.toUpperCase()} XUẤT HIỆN!`, '#f59e0b');
+      soundEngine.playBaseAlert();
+      this.addCameraShake(7);
+    } else if (shouldBeHunter) {
+      this.isHunterPending = false;
+      this.hunterCooldownTimer = 0;
+      this.killsSinceHunterDied = 0;
+      this.addFloatText(spawn.x + size / 2, spawn.y - 12, '⚠️ XE TRUY SÁT XUẤT HIỆN!', '#ef4444');
+      soundEngine.playBaseAlert();
+    }
+
     this.enemies.push(enemy);
-    particleSystem.emitSpawnBurst(spawn.x + size / 2, spawn.y + size / 2, cfg.color);
+    particleSystem.emitSpawnBurst(spawn.x + size / 2, spawn.y + size / 2, (isBoss ? '#f59e0b' : (shouldBeHunter ? '#ef4444' : cfg.color)));
   }
 
   // --- Main Game Loop (100% crash-proof & uninterrupted) ---
@@ -826,6 +876,10 @@ export class GameEngine {
 
     if (this.speedBoostTimer > 0) {
       this.speedBoostTimer = Math.max(0, this.speedBoostTimer - dt);
+    }
+
+    if (this.hunterCooldownTimer > 0) {
+      this.hunterCooldownTimer = Math.max(0, this.hunterCooldownTimer - dt);
     }
 
     // Base Shield Hit Flash Timer
@@ -1480,38 +1534,21 @@ export class GameEngine {
     // Check how many current living hunters exist
     const currentHunters = livingEnemies.filter(e => e.isHunter);
     if (currentHunters.length === 1) {
+      this.isHunterPending = false;
       return; // Exactly one hunter is active!
     }
 
     if (currentHunters.length > 1) {
-      // If multiple, keep the first and reset the others
+      // If multiple exist, keep only the first active and reset others
       for (let i = 1; i < currentHunters.length; i++) {
         currentHunters[i].isHunter = false;
       }
+      this.isHunterPending = false;
       return;
     }
 
-    // No living hunter: select the best candidate to become the Hunter!
-    // Priority:
-    // 1. Pick the enemy closest to the player so pursuit starts immediately
-    // 2. Otherwise pick the first enemy
-    let bestCandidate = livingEnemies[0];
-    if (this.player && this.player.hp > 0) {
-      let minDist = Infinity;
-      for (const enemy of livingEnemies) {
-        const dist = Math.hypot(
-          (enemy.x + enemy.width / 2) - (this.player.x + this.player.width / 2),
-          (enemy.y + enemy.height / 2) - (this.player.y + this.player.height / 2)
-        );
-        if (dist < minDist) {
-          minDist = dist;
-          bestCandidate = enemy;
-        }
-      }
-    }
-
-    bestCandidate.isHunter = true;
-    bestCandidate.currentDecisionTimer = 0.05; // Immediately start pursuit calculation
+    // No living hunter: Per user rule, a new hunter is designated from NEWLY SPAWNED
+    // tanks in spawnEnemy() after cooldown timer expires or enemy kill threshold is met.
   }
 
   private updateEnemy(enemy: Tank, dt: number) {
@@ -1529,111 +1566,136 @@ export class GameEngine {
       }
     }
 
-    if (!enemy.currentDecisionTimer) enemy.currentDecisionTimer = enemy.isHunter ? 0.35 : 1.0;
+    if (!enemy.currentDecisionTimer) enemy.currentDecisionTimer = enemy.isHunter ? 0.2 : 1.0;
     enemy.currentDecisionTimer -= dt;
 
     if (enemy.currentDecisionTimer <= 0) {
-      // Hunter recalculates path every 0.3 - 0.45s to follow corners and steer smoothly towards player
-      enemy.currentDecisionTimer = enemy.isHunter ? (0.3 + Math.random() * 0.15) : (0.8 + Math.random() * 1.5);
+      // Hunter recalculates tactical path rapidly (every 0.2s - 0.35s) for smooth standoff maneuvering
+      enemy.currentDecisionTimer = enemy.isHunter ? (0.2 + Math.random() * 0.15) : (0.8 + Math.random() * 1.5);
       this.decideEnemyDirection(enemy);
     }
 
     // Movement
     const vec = DIR_VECTORS[enemy.dir];
     const weatherMod = weatherSystem.getSpeedMultiplier();
-    // Hunter maintains brisk pursuit speed
-    const effectiveSpeed = enemy.isHunter ? Math.max(enemy.speed, 62) : enemy.speed;
+    const effectiveSpeed = enemy.is360Boss ? enemy.speed : (enemy.isHunter ? Math.max(enemy.speed, 85) : enemy.speed);
     const step = effectiveSpeed * weatherMod * dt;
     const nextX = enemy.x + vec.x * step;
     const nextY = enemy.y + vec.y * step;
 
-    const collided = this.checkTankCollision(nextX, nextY, enemy.width, enemy.height, enemy.id);
+    // Stand-Off Distance Rule for Hunter & 360 Boss:
+    // Maintains safe operational space (never rams or gets stuck against player hull)
+    const isSmartTank = enemy.isHunter || enemy.is360Boss;
+    let isStandoffBlocked = false;
+    if (isSmartTank && this.player && this.player.hp > 0 && !this.isPlayerDying) {
+      const pCx = this.player.x + this.player.width / 2;
+      const pCy = this.player.y + this.player.height / 2;
+      const curDist = Math.hypot((enemy.x + enemy.width / 2) - pCx, (enemy.y + enemy.height / 2) - pCy);
+      const nextDist = Math.hypot((nextX + enemy.width / 2) - pCx, (nextY + enemy.height / 2) - pCy);
+      const MIN_STANDOFF = enemy.is360Boss ? 105 : 85;
+
+      if (nextDist < MIN_STANDOFF && nextDist <= curDist) {
+        isStandoffBlocked = true;
+      }
+    }
+
+    const collided = isStandoffBlocked || this.checkTankCollision(nextX, nextY, enemy.width, enemy.height, enemy.id);
     if (!collided) {
       enemy.x = nextX;
       enemy.y = nextY;
       enemy.tracksOffset += step;
       enemy.stuckTimer = 0;
     } else {
-      // Sub-step closer to obstacle to rest flush against it
-      let subStep = step;
-      while (subStep > 0.2) {
-        subStep /= 2;
-        const tryX = enemy.x + vec.x * subStep;
-        const tryY = enemy.y + vec.y * subStep;
-        if (!this.checkTankCollision(tryX, tryY, enemy.width, enemy.height, enemy.id)) {
-          enemy.x = tryX;
-          enemy.y = tryY;
-          enemy.tracksOffset += subStep;
+      // Sub-step closer to obstacle if not standoff-blocked
+      if (!isStandoffBlocked) {
+        let subStep = step;
+        while (subStep > 0.2) {
+          subStep /= 2;
+          const tryX = enemy.x + vec.x * subStep;
+          const tryY = enemy.y + vec.y * subStep;
+          if (!this.checkTankCollision(tryX, tryY, enemy.width, enemy.height, enemy.id)) {
+            enemy.x = tryX;
+            enemy.y = tryY;
+            enemy.tracksOffset += subStep;
+          }
         }
       }
       enemy.stuckTimer = (enemy.stuckTimer || 0) + dt;
 
-      // Check if the obstacle blocking the tank is the player itself
-      const touchingPlayer = !!(this.player && this.player.hp > 0 && !this.isPlayerDying && Math.hypot(
-        (enemy.x + enemy.width / 2) - (this.player.x + this.player.width / 2),
-        (enemy.y + enemy.height / 2) - (this.player.y + this.player.height / 2)
-      ) < TANK_SIZE * 1.45);
+      if (isSmartTank) {
+        // Hunter & 360 Boss immediately recalculate standoff / retreat / strafe vector to keep moving fluidly
+        if (enemy.stuckTimer > 0.08 || isStandoffBlocked) {
+          this.decideEnemyDirection(enemy, true);
+          enemy.stuckTimer = 0;
+        }
+      } else {
+        // Standard enemy stuck resolution
+        const touchingPlayer = !!(this.player && this.player.hp > 0 && !this.isPlayerDying && Math.hypot(
+          (enemy.x + enemy.width / 2) - (this.player.x + this.player.width / 2),
+          (enemy.y + enemy.height / 2) - (this.player.y + this.player.height / 2)
+        ) < TANK_SIZE * 1.45);
 
-      if (enemy.stuckTimer > (enemy.isHunter ? 0.12 : 0.16)) {
-        if (!touchingPlayer) {
-          // If blocked by destructible brick/crate, fire cannon to blast through obstacle!
-          if ((enemy.isHunter || this.gameMode === 'SURVIVAL') && enemy.reloadTimer <= 0) {
-            const probeX = enemy.x + enemy.width / 2 + vec.x * TANK_SIZE;
-            const probeY = enemy.y + enemy.height / 2 + vec.y * TANK_SIZE;
-            const pCol = Math.floor(probeX / TILE_SIZE);
-            const pRow = Math.floor(probeY / TILE_SIZE);
-            if (pRow >= 0 && pRow < this.gridRows && pCol >= 0 && pCol < this.gridCols && (this.grid[pRow][pCol] === TileType.BRICK || this.grid[pRow][pCol] === TileType.CRATE)) {
+        if (enemy.stuckTimer > 0.16) {
+          if (!touchingPlayer) {
+            if (this.gameMode === 'SURVIVAL' && enemy.reloadTimer <= 0) {
+              const probeX = enemy.x + enemy.width / 2 + vec.x * TANK_SIZE;
+              const probeY = enemy.y + enemy.height / 2 + vec.y * TANK_SIZE;
+              const pCol = Math.floor(probeX / TILE_SIZE);
+              const pRow = Math.floor(probeY / TILE_SIZE);
+              if (pRow >= 0 && pRow < this.gridRows && pCol >= 0 && pCol < this.gridCols && (this.grid[pRow][pCol] === TileType.BRICK || this.grid[pRow][pCol] === TileType.CRATE)) {
+                this.fireEnemyBullet(enemy, false);
+              }
+            }
+            this.decideEnemyDirection(enemy, true);
+          } else {
+            const dx = (this.player!.x + this.player!.width / 2) - (enemy.x + enemy.width / 2);
+            const dy = (this.player!.y + this.player!.height / 2) - (enemy.y + enemy.height / 2);
+            if (Math.abs(dx) >= Math.abs(dy)) {
+              enemy.turretAngle = dx > 0 ? 0 : Math.PI;
+            } else {
+              enemy.turretAngle = dy > 0 ? Math.PI / 2 : -Math.PI / 2;
+            }
+            if (enemy.reloadTimer <= 0) {
               this.fireEnemyBullet(enemy, false);
             }
-          }
-          this.decideEnemyDirection(enemy, true);
-        } else {
-          // Touching or blocked by player:
-          // 1. Aim turret directly at player and fire point-blank!
-          const dx = (this.player!.x + this.player!.width / 2) - (enemy.x + enemy.width / 2);
-          const dy = (this.player!.y + this.player!.height / 2) - (enemy.y + enemy.height / 2);
-          if (Math.abs(dx) >= Math.abs(dy)) {
-            enemy.turretAngle = dx > 0 ? 0 : Math.PI;
-          } else {
-            enemy.turretAngle = dy > 0 ? Math.PI / 2 : -Math.PI / 2;
-          }
-          if (enemy.reloadTimer <= 0) {
-            this.fireEnemyBullet(enemy, false);
-          }
 
-          // 2. Smooth tactical slide/flank: NEVER drive straight into player hull!
-          // If player is on left/right, move UP or DOWN to slide past.
-          // If player is above/below, move LEFT or RIGHT to slide past.
-          const flankDirs: Direction[] = Math.abs(dx) >= Math.abs(dy)
-            ? ['UP', 'DOWN']
-            : ['LEFT', 'RIGHT'];
+            const flankDirs: Direction[] = Math.abs(dx) >= Math.abs(dy)
+              ? ['UP', 'DOWN']
+              : ['LEFT', 'RIGHT'];
 
-          const openDirs = flankDirs.filter(d => {
-            const fVec = DIR_VECTORS[d];
-            return !this.checkTankCollision(enemy.x + fVec.x * 6, enemy.y + fVec.y * 6, enemy.width, enemy.height, enemy.id);
-          });
+            const openDirs = flankDirs.filter(d => {
+              const fVec = DIR_VECTORS[d];
+              return !this.checkTankCollision(enemy.x + fVec.x * 6, enemy.y + fVec.y * 6, enemy.width, enemy.height, enemy.id);
+            });
 
-          if (openDirs.length > 0) {
-            enemy.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
-          } else {
-            // If flanks blocked, step backward away from player
-            const retreatDir: Direction = Math.abs(dx) >= Math.abs(dy)
-              ? (dx > 0 ? 'LEFT' : 'RIGHT')
-              : (dy > 0 ? 'UP' : 'DOWN');
-            enemy.dir = retreatDir;
+            if (openDirs.length > 0) {
+              enemy.dir = openDirs[Math.floor(Math.random() * openDirs.length)];
+            } else {
+              const retreatDir: Direction = Math.abs(dx) >= Math.abs(dy)
+                ? (dx > 0 ? 'LEFT' : 'RIGHT')
+                : (dy > 0 ? 'UP' : 'DOWN');
+              enemy.dir = retreatDir;
+            }
           }
+          enemy.stuckTimer = 0;
         }
-        enemy.stuckTimer = 0;
       }
     }
 
-    // Keep turret locked on player if in combat proximity, otherwise align with movement direction
-    if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
-      const pDist = Math.hypot(
-        (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2),
-        (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2)
-      );
-      if (pDist < TANK_SIZE * 2.2) {
+    // --- TURRET AIMING LOGIC ---
+    if (enemy.is360Boss) {
+      // 360-degree rotating turret for Boss: continuously tracks player at all angles!
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+        const pDx = (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2);
+        const pDy = (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2);
+        enemy.turretAngle = Math.atan2(pDy, pDx);
+      } else {
+        enemy.turretAngle = DIR_VECTORS[enemy.dir].angle;
+      }
+    } else if (enemy.isHunter) {
+      // User rule: "xe tăng truy sát có nòng hướng về phía tôi nhưng nòng không thể quay 360 được"
+      // Hunter aims toward player but SNAPS strictly to 4 cardinal directions (0, PI/2, PI, -PI/2) only!
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
         const pDx = (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2);
         const pDy = (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2);
         if (Math.abs(pDx) >= Math.abs(pDy)) {
@@ -1645,7 +1707,26 @@ export class GameEngine {
         enemy.turretAngle = DIR_VECTORS[enemy.dir].angle;
       }
     } else {
-      enemy.turretAngle = DIR_VECTORS[enemy.dir].angle;
+      // Standard enemies align with movement or lock when very close
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+        const pDist = Math.hypot(
+          (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2),
+          (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2)
+        );
+        if (pDist < TANK_SIZE * 2.2) {
+          const pDx = (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2);
+          const pDy = (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2);
+          if (Math.abs(pDx) >= Math.abs(pDy)) {
+            enemy.turretAngle = pDx > 0 ? 0 : Math.PI;
+          } else {
+            enemy.turretAngle = pDy > 0 ? Math.PI / 2 : -Math.PI / 2;
+          }
+        } else {
+          enemy.turretAngle = DIR_VECTORS[enemy.dir].angle;
+        }
+      } else {
+        enemy.turretAngle = DIR_VECTORS[enemy.dir].angle;
+      }
     }
 
     // AI Firing evaluation
@@ -1665,8 +1746,9 @@ export class GameEngine {
   }
 
   private decideEnemyDirection(enemy: Tank, forceTurn: boolean = false) {
-    // Dedicated Hunter Tank Pursuit & Navigation Logic
-    if (enemy.isHunter && this.player && this.player.hp > 0 && !this.isPlayerDying) {
+    // Dedicated Hunter & 360 Boss Pursuit, Standoff & Navigation Logic
+    const isSmartTank = enemy.isHunter || enemy.is360Boss;
+    if (isSmartTank && this.player && this.player.hp > 0 && !this.isPlayerDying) {
       const eCx = enemy.x + enemy.width / 2;
       const eCy = enemy.y + enemy.height / 2;
       const pCx = this.player.x + this.player.width / 2;
@@ -1675,35 +1757,24 @@ export class GameEngine {
       const dy = pCy - eCy;
       const distToPlayer = Math.hypot(dx, dy);
 
-      // Point-blank range: lock turret on player and maneuver smartly
-      if (distToPlayer < TANK_SIZE * 1.5) {
+      // Turret aim:
+      if (enemy.is360Boss) {
+        // Boss has 360-degree rotating turret
+        enemy.turretAngle = Math.atan2(dy, dx);
+      } else {
+        // Hunter has 4-directional cardinal turret only
         if (Math.abs(dx) >= Math.abs(dy)) {
           enemy.turretAngle = dx > 0 ? 0 : Math.PI;
         } else {
           enemy.turretAngle = dy > 0 ? Math.PI / 2 : -Math.PI / 2;
         }
-
-        // If very close to player (within 1.2 tiles), do NOT ram straight into player; flank or circle!
-        if (distToPlayer < TANK_SIZE * 1.2) {
-          const flankDirs: Direction[] = Math.abs(dx) >= Math.abs(dy) ? ['UP', 'DOWN'] : ['LEFT', 'RIGHT'];
-          const passableFlank = flankDirs.filter(d => isDirPassable(d));
-          if (passableFlank.length > 0) {
-            enemy.dir = passableFlank[Math.floor(Math.random() * passableFlank.length)];
-            return;
-          }
-        }
       }
 
-      const horizDir: Direction = dx > 0 ? 'RIGHT' : 'LEFT';
-      const vertDir: Direction = dy > 0 ? 'DOWN' : 'UP';
+      const MIN_STANDOFF = enemy.is360Boss ? 105 : 85;   // Minimum safe operational distance
+      const MAX_STANDOFF = enemy.is360Boss ? 165 : 135;  // Ideal combat firing envelope
 
-      // Pick primary axis by distance
-      const primaryDir = Math.abs(dx) >= Math.abs(dy) ? horizDir : vertDir;
-      const secondaryDir = Math.abs(dx) >= Math.abs(dy) ? vertDir : horizDir;
-
-      // Helper: check if a direction is passable by terrain
-      // Crucial: we do NOT consider the player an impassable obstacle!
-      const isDirPassable = (dir: Direction): boolean => {
+      // Helper: check if a direction is passable and avoids ramming player
+      const isDirPassable = (dir: Direction, allowTowardsPlayer: boolean = true): boolean => {
         const vec = DIR_VECTORS[dir];
         const probeStep = 8;
         const testX = enemy.x + vec.x * probeStep;
@@ -1714,7 +1785,16 @@ export class GameEngine {
           return false;
         }
 
-        // Check solid tiles
+        // Stand-off enforcement: Do not move in directions that penetrate the safe perimeter!
+        const nextDist = Math.hypot((testX + enemy.width / 2) - pCx, (testY + enemy.height / 2) - pCy);
+        if (!allowTowardsPlayer && nextDist < distToPlayer) {
+          return false;
+        }
+        if (nextDist < MIN_STANDOFF && nextDist < distToPlayer) {
+          return false;
+        }
+
+        // Check solid obstacles
         const pad = 1.0;
         const minCol = Math.floor((testX + pad) / TILE_SIZE);
         const maxCol = Math.floor((testX + enemy.width - pad - 0.05) / TILE_SIZE);
@@ -1730,10 +1810,11 @@ export class GameEngine {
               tile === TileType.REINFORCED_WALL ||
               tile === TileType.ENERGY_BARRIER ||
               tile === TileType.WATER ||
+              tile === TileType.EXPLOSIVE_BARREL ||
               tile === TileType.BASE ||
               tile === TileType.BASE_DESTROYED
             ) {
-              return false; // Solid wall
+              return false;
             }
           }
         }
@@ -1750,39 +1831,74 @@ export class GameEngine {
         return true;
       };
 
-      const canTakePrimary = (!forceTurn || enemy.dir !== primaryDir) && isDirPassable(primaryDir);
-      const canTakeSecondary = (!forceTurn || enemy.dir !== secondaryDir) && isDirPassable(secondaryDir);
+      // Cardinal navigation vectors:
+      const advanceHoriz: Direction = dx > 0 ? 'RIGHT' : 'LEFT';
+      const advanceVert: Direction = dy > 0 ? 'DOWN' : 'UP';
+      const retreatHoriz: Direction = dx > 0 ? 'LEFT' : 'RIGHT';
+      const retreatVert: Direction = dy > 0 ? 'UP' : 'DOWN';
+      const lateralDirs: Direction[] = Math.abs(dx) >= Math.abs(dy) ? ['UP', 'DOWN'] : ['LEFT', 'RIGHT'];
 
-      if (canTakePrimary) {
-        // If switching from vertical to horizontal, assist alignment with corridor row
-        if ((primaryDir === 'LEFT' || primaryDir === 'RIGHT') && (enemy.dir === 'UP' || enemy.dir === 'DOWN')) {
-          const targetY = Math.round(enemy.y / TILE_SIZE) * TILE_SIZE;
-          if (Math.abs(enemy.y - targetY) < 7) {
-            enemy.y = targetY;
+      let chosenDir: Direction | null = null;
+
+      if (distToPlayer < MIN_STANDOFF) {
+        // --- CASE 1: TOO CLOSE -> RETREAT / BACK OFF FROM PLAYER ---
+        const primaryRetreat = Math.abs(dx) >= Math.abs(dy) ? retreatHoriz : retreatVert;
+        const secondaryRetreat = Math.abs(dx) >= Math.abs(dy) ? retreatVert : retreatHoriz;
+
+        if (isDirPassable(primaryRetreat, false)) {
+          chosenDir = primaryRetreat;
+        } else if (isDirPassable(secondaryRetreat, false)) {
+          chosenDir = secondaryRetreat;
+        } else {
+          const openLaterals = lateralDirs.filter(d => isDirPassable(d, false));
+          if (openLaterals.length > 0) {
+            chosenDir = openLaterals.includes(enemy.dir) ? enemy.dir : openLaterals[Math.floor(Math.random() * openLaterals.length)];
           }
         }
-        enemy.dir = primaryDir;
-      } else if (canTakeSecondary) {
-        // If switching from horizontal to vertical, assist alignment with corridor col
-        if ((secondaryDir === 'UP' || secondaryDir === 'DOWN') && (enemy.dir === 'LEFT' || enemy.dir === 'RIGHT')) {
-          const targetX = Math.round(enemy.x / TILE_SIZE) * TILE_SIZE;
-          if (Math.abs(enemy.x - targetX) < 7) {
-            enemy.x = targetX;
+      } else if (distToPlayer <= MAX_STANDOFF) {
+        // --- CASE 2: IDEAL COMBAT ZONE -> STRAFE LATERALLY / FLANK / HOLD DISTANCE ---
+        const openLaterals = lateralDirs.filter(d => isDirPassable(d, false));
+        if (openLaterals.length > 0) {
+          if (!forceTurn && openLaterals.includes(enemy.dir)) {
+            chosenDir = enemy.dir;
+          } else {
+            chosenDir = openLaterals[Math.floor(Math.random() * openLaterals.length)];
+          }
+        } else {
+          const retreatDir = Math.abs(dx) >= Math.abs(dy) ? retreatHoriz : retreatVert;
+          if (isDirPassable(retreatDir, false)) {
+            chosenDir = retreatDir;
           }
         }
-        enemy.dir = secondaryDir;
       } else {
-        // Both primary & secondary blocked; try remaining open directions
-        const allDirs: Direction[] = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-        const openDirs = allDirs.filter(d => (!forceTurn || d !== enemy.dir) && isDirPassable(d));
-        if (openDirs.length > 0) {
-          enemy.dir = openDirs[0];
-        } else if (!forceTurn) {
-          enemy.dir = primaryDir;
+        // --- CASE 3: FAR DISTANCE -> ADVANCE TOWARDS PLAYER ---
+        const primaryAdvance = Math.abs(dx) >= Math.abs(dy) ? advanceHoriz : advanceVert;
+        const secondaryAdvance = Math.abs(dx) >= Math.abs(dy) ? advanceVert : advanceHoriz;
+
+        if ((!forceTurn || enemy.dir !== primaryAdvance) && isDirPassable(primaryAdvance, true)) {
+          if ((primaryAdvance === 'LEFT' || primaryAdvance === 'RIGHT') && (enemy.dir === 'UP' || enemy.dir === 'DOWN')) {
+            const targetY = Math.round(enemy.y / TILE_SIZE) * TILE_SIZE;
+            if (Math.abs(enemy.y - targetY) < 7) enemy.y = targetY;
+          }
+          chosenDir = primaryAdvance;
+        } else if ((!forceTurn || enemy.dir !== secondaryAdvance) && isDirPassable(secondaryAdvance, true)) {
+          if ((secondaryAdvance === 'UP' || secondaryAdvance === 'DOWN') && (enemy.dir === 'LEFT' || enemy.dir === 'RIGHT')) {
+            const targetX = Math.round(enemy.x / TILE_SIZE) * TILE_SIZE;
+            if (Math.abs(enemy.x - targetX) < 7) enemy.x = targetX;
+          }
+          chosenDir = secondaryAdvance;
+        } else {
+          const allDirs: Direction[] = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+          const openDirs = allDirs.filter(d => (!forceTurn || d !== enemy.dir) && isDirPassable(d, true));
+          if (openDirs.length > 0) {
+            chosenDir = openDirs[0];
+          }
         }
       }
 
-      enemy.turretAngle = DIR_VECTORS[enemy.dir].angle;
+      if (chosenDir) {
+        enemy.dir = chosenDir;
+      }
       return;
     }
 
@@ -1830,35 +1946,95 @@ export class GameEngine {
   }
 
   private evaluateEnemyFireLine(enemy: Tank): boolean {
-    // Dedicated Hunter firing line evaluation
-    if (enemy.isHunter) {
-      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
-        const eCenterX = enemy.x + enemy.width / 2;
-        const eCenterY = enemy.y + enemy.height / 2;
-        const pCenterX = this.player.x + this.player.width / 2;
-        const pCenterY = this.player.y + this.player.height / 2;
+    if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+      const eCenterX = enemy.x + enemy.width / 2;
+      const eCenterY = enemy.y + enemy.height / 2;
+      const pCenterX = this.player.x + this.player.width / 2;
+      const pCenterY = this.player.y + this.player.height / 2;
+      const dx = pCenterX - eCenterX;
+      const dy = pCenterY - eCenterY;
+      const dist = Math.hypot(dx, dy);
 
-        const dx = pCenterX - eCenterX;
-        const dy = pCenterY - eCenterY;
-        const dist = Math.hypot(dx, dy);
+      // Concealment check
+      const playerInBush = this.isTankInBush(this.player);
+      const enemyInBush = this.isTankInBush(enemy);
+      if (playerInBush && !enemyInBush) {
+        return false;
+      }
 
-        // Hunter checks line of sight with player with generous crosshair alignment
-        const alignTolerance = TANK_SIZE * 1.4;
+      // CASE 1: 360-degree Dreadnought Boss Firing
+      if (enemy.is360Boss) {
+        const steps = Math.max(2, Math.floor(dist / (TILE_SIZE * 0.5)));
+        let blockedBySteel = false;
+        for (let s = 1; s < steps; s++) {
+          const rx = eCenterX + (dx / steps) * s;
+          const ry = eCenterY + (dy / steps) * s;
+          const rc = Math.floor(rx / TILE_SIZE);
+          const rr = Math.floor(ry / TILE_SIZE);
+          if (rr >= 0 && rr < this.gridRows && rc >= 0 && rc < this.gridCols) {
+            const tile = this.grid[rr][rc];
+            if (tile === TileType.STEEL || tile === TileType.ENERGY_BARRIER) {
+              blockedBySteel = true;
+              break;
+            }
+          }
+        }
+        if (!blockedBySteel) return true;
 
-        if (enemy.dir === 'UP' && Math.abs(dx) < alignTolerance && dy < 0) return true;
-        if (enemy.dir === 'DOWN' && Math.abs(dx) < alignTolerance && dy > 0) return true;
-        if (enemy.dir === 'LEFT' && Math.abs(dy) < alignTolerance && dx < 0) return true;
-        if (enemy.dir === 'RIGHT' && Math.abs(dy) < alignTolerance && dx > 0) return true;
+        const dirVec = DIR_VECTORS[enemy.dir];
+        const probeX = eCenterX + dirVec.x * (TANK_SIZE * 1.3);
+        const probeY = eCenterY + dirVec.y * (TANK_SIZE * 1.3);
+        const col = Math.floor(probeX / TILE_SIZE);
+        const row = Math.floor(probeY / TILE_SIZE);
+        if (col >= 0 && col < this.gridCols && row >= 0 && row < this.gridRows) {
+          if (this.grid[row][col] === TileType.BRICK || this.grid[row][col] === TileType.CRATE) {
+            return Math.random() < 0.45;
+          }
+        }
+        return false;
+      }
 
-        // Point-blank range: fire immediately if facing player's hemisphere
-        if (dist < TANK_SIZE * 1.6) {
-          if (enemy.dir === 'RIGHT' && dx > 0) return true;
-          if (enemy.dir === 'LEFT' && dx < 0) return true;
-          if (enemy.dir === 'DOWN' && dy > 0) return true;
-          if (enemy.dir === 'UP' && dy < 0) return true;
+      // CASE 2: Hunter Tank Cardinal 4-Way Firing (Nòng chỉ bắn theo 4 hướng chính)
+      if (enemy.isHunter) {
+        const alignTolerance = TANK_SIZE * 1.3;
+        let isAligned = false;
+        let rayDx = 0;
+        let rayDy = 0;
+
+        // Check if player is aligned with the hunter's 4 cardinal turret directions
+        if (enemy.turretAngle === 0 && dx > 0 && Math.abs(dy) < alignTolerance) {
+          isAligned = true;
+          rayDx = 1;
+        } else if ((enemy.turretAngle === Math.PI || enemy.turretAngle === -Math.PI) && dx < 0 && Math.abs(dy) < alignTolerance) {
+          isAligned = true;
+          rayDx = -1;
+        } else if (Math.abs(enemy.turretAngle - Math.PI / 2) < 0.01 && dy > 0 && Math.abs(dx) < alignTolerance) {
+          isAligned = true;
+          rayDy = 1;
+        } else if (Math.abs(enemy.turretAngle - (-Math.PI / 2)) < 0.01 && dy < 0 && Math.abs(dx) < alignTolerance) {
+          isAligned = true;
+          rayDy = -1;
         }
 
-        // Also if directly facing a destructible brick/crate in front of it, blast through to clear the path!
+        if (isAligned) {
+          const steps = Math.max(2, Math.floor(dist / (TILE_SIZE * 0.5)));
+          let blockedBySteel = false;
+          for (let s = 1; s < steps; s++) {
+            const rx = eCenterX + (rayDx !== 0 ? rayDx * (s * TILE_SIZE * 0.5) : 0);
+            const ry = eCenterY + (rayDy !== 0 ? rayDy * (s * TILE_SIZE * 0.5) : 0);
+            const rc = Math.floor(rx / TILE_SIZE);
+            const rr = Math.floor(ry / TILE_SIZE);
+            if (rr >= 0 && rr < this.gridRows && rc >= 0 && rc < this.gridCols) {
+              const tile = this.grid[rr][rc];
+              if (tile === TileType.STEEL || tile === TileType.ENERGY_BARRIER) {
+                blockedBySteel = true;
+                break;
+              }
+            }
+          }
+          if (!blockedBySteel) return true;
+        }
+
         const dirVec = DIR_VECTORS[enemy.dir];
         const probeX = eCenterX + dirVec.x * (TANK_SIZE * 1.1);
         const probeY = eCenterY + dirVec.y * (TANK_SIZE * 1.1);
@@ -1866,11 +2042,11 @@ export class GameEngine {
         const row = Math.floor(probeY / TILE_SIZE);
         if (col >= 0 && col < this.gridCols && row >= 0 && row < this.gridRows) {
           if (this.grid[row][col] === TileType.BRICK || this.grid[row][col] === TileType.CRATE) {
-            return true;
+            return Math.random() < 0.35;
           }
         }
+        return false;
       }
-      return false;
     }
 
     if (Math.random() < 0.08) return true;
@@ -1930,6 +2106,33 @@ export class GameEngine {
     const stage = Math.max(1, this.stats.stage);
     const bulletSpeedMultiplier = Math.min(1.20, 0.85 + (stage - 1) * 0.04);
     const scaledBulletSpeed = Math.round(cfg.bulletSpeed * bulletSpeedMultiplier);
+
+    // 360 Dreadnought Boss Twin Heavy Cannons
+    if (enemy.is360Boss || enemy.type === 'BOSS') {
+      const perpAngle = angle + Math.PI / 2;
+      const twinOffset = 5.5;
+      [-1, 1].forEach((sign) => {
+        const bx = muzzleX + Math.cos(perpAngle) * (twinOffset * sign);
+        const by = muzzleY + Math.sin(perpAngle) * (twinOffset * sign);
+        this.bullets.push({
+          id: `boss_b_${Date.now()}_${Math.random()}`,
+          x: bx,
+          y: by,
+          vx: Math.cos(angle) * (scaledBulletSpeed * 1.05),
+          vy: Math.sin(angle) * (scaledBulletSpeed * 1.05),
+          radius: BULLET_RADIUS + 1.2,
+          damage: 1,
+          ownerId: enemy.id,
+          isPlayer: false,
+          canBreakSteel: true,
+          isMissile: true,
+        });
+        particleSystem.emitMuzzleFlash(bx, by, angle, true);
+      });
+      soundEngine.playShoot(false, true);
+      this.addCameraShake(2.2);
+      return;
+    }
 
     this.bullets.push({
       id: `eb_${Date.now()}_${Math.random()}`,
@@ -2432,6 +2635,18 @@ export class GameEngine {
 
     this.addFloatText(cx, enemy.y, `+${enemy.scoreValue}`, '#facc15');
 
+    // Hunter Tank Lifecycle Management
+    if (enemy.isHunter) {
+      this.isHunterPending = true;
+      this.hunterCooldownTimer = 12.0; // 12 seconds cooldown before a newly spawned tank can become a hunter
+      this.killsSinceHunterDied = 0;
+      this.addFloatText(cx, enemy.y - 14, 'HẠ GỤC XE TRUY SÁT!', '#22c55e');
+    } else {
+      if (this.isHunterPending) {
+        this.killsSinceHunterDied++;
+      }
+    }
+
     if (enemy.isFlashing || isBoss) {
       this.spawnPowerUp(cx, cy);
     }
@@ -2542,14 +2757,24 @@ export class GameEngine {
         }
         break;
 
-      case 'BOMB':
+      case 'BOMB': {
+        const remainingEnemies: Tank[] = [];
         for (const e of this.enemies) {
-          e.hp = 0;
-          this.handleEnemyDestroyed(e);
+          e.hp = Math.max(0, e.hp - 1);
+          particleSystem.emitTankExplosion(e.x + e.width / 2, e.y + e.height / 2, 18, '#f97316', false);
+          this.addFloatText(e.x + e.width / 2, e.y - 12, '-1 HP', '#f87171');
+          if (e.hp <= 0) {
+            this.handleEnemyDestroyed(e);
+          } else {
+            remainingEnemies.push(e);
+          }
         }
-        this.enemies = [];
-        this.addFloatText(pX, pY, '💣 BOM NGUYÊN TỬ!', '#f97316');
+        this.enemies = remainingEnemies;
+        soundEngine.playExplosion();
+        this.addCameraShake(5);
+        this.addFloatText(pX, pY, '💣 BOM TẬP KÍCH: TẤT CẢ ĐỊCH -1 HP!', '#f97316');
         break;
+      }
 
       case 'CLOCK':
         this.clockFreezeTimer = 7.0;
@@ -2970,120 +3195,188 @@ export class GameEngine {
   }
 
   private generateMeadowTerrainCanvas(tCanvas: HTMLCanvasElement, tCtx: CanvasRenderingContext2D): HTMLCanvasElement {
-    // === CHIẾN TRƯỜNG ĐỒNG CỎ XANH RETRO PIXEL ART (LUSH RETRO MEADOW) ===
-    // 1. Base Meadow Turf: Rich, pleasant natural pasture green
-    tCtx.fillStyle = '#2f652c';
+    // === CHIẾN TRƯỜNG ĐỒNG CỎ XANH HAND-CRAFTED 2D GAME ART (WARM NATURAL MEADOW) ===
+    // 1. Base Meadow Turf: Rich, warm, eye-friendly earthy olive/pasture gradient (anti-glare, high contrast)
+    const baseGrad = tCtx.createLinearGradient(0, 0, this.canvasWidth, this.canvasHeight);
+    baseGrad.addColorStop(0, '#26381e');
+    baseGrad.addColorStop(0.5, '#2c4024');
+    baseGrad.addColorStop(1, '#23341b');
+    tCtx.fillStyle = baseGrad;
     tCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
-    // 2. Subtle 26px Grid-Aligned Turf Checkering (delicate 3% tone difference, crisp retro aesthetic)
     const cols = Math.ceil(this.canvasWidth / TILE_SIZE);
     const rows = Math.ceil(this.canvasHeight / TILE_SIZE);
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const x = c * TILE_SIZE;
-        const y = r * TILE_SIZE;
 
-        // Alternating pasture lawn pattern
-        if ((r + c) % 2 === 1) {
-          tCtx.fillStyle = 'rgba(54, 115, 50, 0.28)'; // subtle lighter grass swatch
-          tCtx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-        }
-
-        // Faint border shadow between grass swatches for depth
-        tCtx.fillStyle = 'rgba(20, 50, 18, 0.12)';
-        tCtx.fillRect(x, y + TILE_SIZE - 1, TILE_SIZE, 1);
-        tCtx.fillRect(x + TILE_SIZE - 1, y, 1, TILE_SIZE);
-      }
-    }
-
-    // 3. Deterministic pseudo-random generator for crisp, repeatable decorations
+    // 2. Deterministic pseudo-random generator for crisp, repeatable 2D art placement
     let seed = 48291;
     const rnd = () => {
       seed = (seed * 9301 + 49297) % 233280;
       return seed / 233280;
     };
 
-    // 4. Natural Winding Dirt Path Trails (Đường mòn đất son qua đồng cỏ)
-    for (let r = 2; r < rows - 2; r += 2) {
-      for (let c = 2; c < cols - 2; c += 2) {
-        if (rnd() < 0.18) {
-          const px = c * TILE_SIZE + 4;
-          const py = r * TILE_SIZE + 4;
-          // Earthy trail patch
-          tCtx.fillStyle = 'rgba(120, 78, 38, 0.18)';
-          tCtx.fillRect(px, py, 18, 18);
-          tCtx.fillStyle = 'rgba(150, 105, 55, 0.14)';
-          tCtx.fillRect(px + 3, py + 3, 12, 12);
+    // 3. Subtle 2D Lawn Tile Depth (Soft, organic tone shifts - no eye strain)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * TILE_SIZE;
+        const y = r * TILE_SIZE;
+
+        // Alternating warm earth/moss tile swatch
+        if ((r + c) % 2 === 1) {
+          tCtx.fillStyle = 'rgba(74, 107, 58, 0.16)';
+          tCtx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        } else {
+          tCtx.fillStyle = 'rgba(18, 28, 14, 0.12)';
+          tCtx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        }
+
+        // Soft, faint bottom-right grass seam for 2D depth
+        tCtx.fillStyle = 'rgba(12, 20, 10, 0.18)';
+        tCtx.fillRect(x, y + TILE_SIZE - 1, TILE_SIZE, 1);
+        tCtx.fillRect(x + TILE_SIZE - 1, y, 1, TILE_SIZE);
+      }
+    }
+
+    // 4. Natural Winding Earthy Dirt Paths & Soil Clearings (Đường mòn đất son tự nhiên)
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        if (rnd() < 0.22) {
+          const px = c * TILE_SIZE + Math.floor(rnd() * 6);
+          const py = r * TILE_SIZE + Math.floor(rnd() * 6);
+          const pw = 14 + Math.floor(rnd() * 12);
+          const ph = 14 + Math.floor(rnd() * 12);
+
+          // Deep loam patch
+          const dirtGrad = tCtx.createRadialGradient(px + pw / 2, py + ph / 2, 2, px + pw / 2, py + ph / 2, pw / 2);
+          dirtGrad.addColorStop(0, 'rgba(70, 52, 34, 0.38)');
+          dirtGrad.addColorStop(0.7, 'rgba(88, 66, 44, 0.20)');
+          dirtGrad.addColorStop(1, 'rgba(40, 30, 20, 0)');
+          tCtx.fillStyle = dirtGrad;
+          tCtx.beginPath();
+          tCtx.ellipse(px + pw / 2, py + ph / 2, pw / 2, ph / 2, rnd() * Math.PI, 0, Math.PI * 2);
+          tCtx.fill();
+
+          // Delicate vehicle wheel ruts in soil
+          if (rnd() < 0.5) {
+            tCtx.fillStyle = 'rgba(28, 20, 12, 0.35)';
+            tCtx.fillRect(px + 3, py + 4, pw - 6, 1.5);
+            tCtx.fillRect(px + 3, py + ph - 5, pw - 6, 1.5);
+          }
         }
       }
     }
 
-    // 5. Crisp Pixel Grass Tufts (Bụi cỏ nhỏ tự nhiên)
+    // 5. Hand-Crafted 2D Grass Tufts & Wild Clover Sprigs (Bụi cỏ đa tầng & cỏ 3 lá)
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const x = c * TILE_SIZE;
         const y = r * TILE_SIZE;
 
         const grassChance = rnd();
-        if (grassChance < 0.45) {
-          const gx = x + 4 + Math.floor(rnd() * 14);
+        if (grassChance < 0.52) {
+          const gx = x + 3 + Math.floor(rnd() * 15);
           const gy = y + 4 + Math.floor(rnd() * 14);
 
-          // Deep grass blade shadow
-          tCtx.fillStyle = '#1c451a';
-          tCtx.fillRect(gx, gy + 1, 1, 3);
-          tCtx.fillRect(gx + 2, gy, 1, 4);
-          tCtx.fillRect(gx + 4, gy + 1, 1, 3);
+          // Deep blade root shadow
+          tCtx.fillStyle = '#142210';
+          tCtx.fillRect(gx, gy + 1, 1, 3.5);
+          tCtx.fillRect(gx + 2, gy, 1, 4.5);
+          tCtx.fillRect(gx + 4, gy + 1, 1, 3.5);
 
-          // Fresh lime blade highlight
-          tCtx.fillStyle = '#4ade80';
+          // Rich mossy green body
+          tCtx.fillStyle = '#3a5927';
+          tCtx.fillRect(gx, gy + 0.5, 1, 2);
+          tCtx.fillRect(gx + 2, gy - 0.5, 1, 3);
+          tCtx.fillRect(gx + 4, gy + 0.5, 1, 2);
+
+          // Sunlit natural olive tips (warm, pleasant, never glaring)
+          tCtx.fillStyle = '#679146';
           tCtx.fillRect(gx, gy, 1, 1);
           tCtx.fillRect(gx + 2, gy - 1, 1, 1);
           tCtx.fillRect(gx + 4, gy, 1, 1);
+
+          // Small 3-leaf clover patch nearby
+          if (rnd() < 0.35) {
+            const clx = x + 2 + Math.floor(rnd() * 16);
+            const cly = y + 2 + Math.floor(rnd() * 16);
+            tCtx.fillStyle = '#2f491c';
+            tCtx.fillRect(clx - 1, cly, 1, 1);
+            tCtx.fillRect(clx + 1, cly, 1, 1);
+            tCtx.fillRect(clx, cly - 1, 1, 1);
+            tCtx.fillStyle = '#4d7530';
+            tCtx.fillRect(clx, cly, 1, 1);
+          }
         }
 
-        // 6. Charming Pixel Wildflowers (Hoa cúc dại, hoa bơ vàng & thạch thảo)
+        // 6. Charming 2D Wildflowers (Hoa cúc dại trắng, hoa anh túc đỏ, hoa thạch thảo)
         const flowerChance = rnd();
-        if (flowerChance < 0.28) {
-          const fx = x + 6 + Math.floor(rnd() * 12);
-          const fy = y + 6 + Math.floor(rnd() * 12);
+        if (flowerChance < 0.32) {
+          const fx = x + 5 + Math.floor(rnd() * 14);
+          const fy = y + 5 + Math.floor(rnd() * 14);
           const flowerType = rnd();
 
-          if (flowerType < 0.5) {
+          if (flowerType < 0.42) {
             // White Chamomile Daisy (Hoa cúc trắng nhụy vàng)
-            tCtx.fillStyle = '#ffffff';
+            tCtx.fillStyle = '#f8fafc';
             tCtx.fillRect(fx - 1, fy, 3, 1);
             tCtx.fillRect(fx, fy - 1, 1, 3);
             tCtx.fillStyle = '#facc15';
             tCtx.fillRect(fx, fy, 1, 1);
-          } else if (flowerType < 0.8) {
-            // Golden Buttercup (Hoa bơ vàng thảo nguyên)
-            tCtx.fillStyle = '#fef08a';
+          } else if (flowerType < 0.70) {
+            // Wild Woodland Red Poppy (Hoa anh túc đỏ thắm nở trên cỏ)
+            tCtx.fillStyle = '#dc2626';
+            tCtx.fillRect(fx - 1, fy - 1, 3, 3);
+            tCtx.fillStyle = '#f87171';
+            tCtx.fillRect(fx, fy - 1, 1, 1);
+            tCtx.fillStyle = '#450a0a';
+            tCtx.fillRect(fx, fy, 1, 1);
+          } else if (flowerType < 0.88) {
+            // Golden Prairie Buttercup (Hoa bơ vàng ấm áp)
+            tCtx.fillStyle = '#fde047';
             tCtx.fillRect(fx, fy, 2, 2);
-            tCtx.fillStyle = '#eab308';
+            tCtx.fillStyle = '#ca8a04';
             tCtx.fillRect(fx, fy, 1, 1);
           } else {
-            // Wild Lavender Aster (Hoa tím thảo nguyên)
-            tCtx.fillStyle = '#d8b4fe';
+            // Mountain Bluebell / Lavender (Hoa thạch thảo tím biếc)
+            tCtx.fillStyle = '#c084fc';
             tCtx.fillRect(fx, fy, 2, 2);
-            tCtx.fillStyle = '#9333ea';
+            tCtx.fillStyle = '#7e22ce';
             tCtx.fillRect(fx, fy, 1, 1);
           }
         }
 
-        // 7. Small Slate River Pebbles (Sỏi đá hoa cương nhỏ ven cỏ)
-        if (rnd() < 0.14) {
-          const sx = x + 3 + Math.floor(rnd() * 16);
-          const sy = y + 3 + Math.floor(rnd() * 16);
-          tCtx.fillStyle = 'rgba(15, 23, 42, 0.4)';
-          tCtx.fillRect(sx, sy + 1, 3, 2);
-          tCtx.fillStyle = '#64748b';
-          tCtx.fillRect(sx, sy, 3, 1.5);
+        // 7. Natural River & Slate Pebbles (Sỏi cuội ven đường)
+        if (rnd() < 0.18) {
+          const sx = x + 3 + Math.floor(rnd() * 18);
+          const sy = y + 3 + Math.floor(rnd() * 18);
+          // Soft ground cast shadow
+          tCtx.fillStyle = 'rgba(10, 20, 10, 0.40)';
+          tCtx.fillRect(sx, sy + 1.5, 3.5, 2);
+          // Slate stone facet
+          tCtx.fillStyle = '#334155';
+          tCtx.fillRect(sx, sy, 3, 2);
+          tCtx.fillStyle = '#475569';
+          tCtx.fillRect(sx, sy, 2.5, 1.5);
+          // Specular glint
           tCtx.fillStyle = '#94a3b8';
           tCtx.fillRect(sx, sy, 1, 1);
         }
       }
     }
+
+    // 8. Soft Atmospheric Vignette (Tạo chiều sâu ánh sáng dịu mắt)
+    const vig = tCtx.createRadialGradient(
+      this.canvasWidth / 2,
+      this.canvasHeight / 2,
+      this.canvasHeight * 0.35,
+      this.canvasWidth / 2,
+      this.canvasHeight / 2,
+      this.canvasWidth * 0.68
+    );
+    vig.addColorStop(0, 'rgba(255, 255, 255, 0.015)');
+    vig.addColorStop(0.6, 'rgba(0, 0, 0, 0)');
+    vig.addColorStop(1, 'rgba(8, 16, 8, 0.38)');
+    tCtx.fillStyle = vig;
+    tCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
     return tCanvas;
   }
@@ -3533,17 +3826,24 @@ export class GameEngine {
   }
 
   private renderExtendedBackground(ctx: CanvasRenderingContext2D, vW: number, vH: number) {
-    // Rich military dark asphalt/soil gradient filling 100% of the canvas
+    const isMeadow = this.isMeadowStage();
+    // Rich military dark asphalt/soil or deep woodland gradient filling 100% of the canvas
     const bgGrad = ctx.createLinearGradient(0, 0, vW, vH);
-    bgGrad.addColorStop(0, '#151821');
-    bgGrad.addColorStop(0.5, '#11141b');
-    bgGrad.addColorStop(1, '#0e1016');
+    if (isMeadow) {
+      bgGrad.addColorStop(0, '#101a11');
+      bgGrad.addColorStop(0.5, '#0c140d');
+      bgGrad.addColorStop(1, '#080e09');
+    } else {
+      bgGrad.addColorStop(0, '#151821');
+      bgGrad.addColorStop(0.5, '#11141b');
+      bgGrad.addColorStop(1, '#0e1016');
+    }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, vW, vH);
 
     // Extended paver tile seams aligned seamlessly with arena grid
     const effectiveTile = Math.max(8, TILE_SIZE * Math.max(0.1, this.scale));
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.022)';
+    ctx.strokeStyle = isMeadow ? 'rgba(134, 239, 172, 0.025)' : 'rgba(255, 255, 255, 0.022)';
     ctx.lineWidth = 1;
 
     // Vertical seam lines extending left and right
@@ -3576,7 +3876,7 @@ export class GameEngine {
       const rightRadius = Math.max(1, Math.min(vH * 0.45, rightMargin * 0.9));
 
       // Subtle tactical radar arc sweep on West flank
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
+      ctx.strokeStyle = isMeadow ? 'rgba(74, 222, 128, 0.08)' : 'rgba(56, 189, 248, 0.06)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 6]);
       ctx.beginPath();
@@ -3590,28 +3890,35 @@ export class GameEngine {
       ctx.setLineDash([]);
 
       // Subtle tactical sector text markings
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.28)';
+      ctx.fillStyle = isMeadow ? 'rgba(134, 239, 172, 0.32)' : 'rgba(148, 163, 184, 0.28)';
       ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('◄ VÀNH ĐAI TÂY', leftMidX, 32);
-      ctx.fillText('RADAR QUÂN SỰ', leftMidX, vH - 28);
-
-      ctx.fillText('VÀNH ĐAI ĐÔNG ►', rightMidX, 32);
-      ctx.fillText('TRINH SÁT TÁC CHIẾN', rightMidX, vH - 28);
+      if (isMeadow) {
+        ctx.fillText('◄ CHIẾN TRƯỜNG ĐỒNG CỎ', leftMidX, 32);
+        ctx.fillText('CĂN CỨ TIỀN TIÊU', leftMidX, vH - 28);
+        ctx.fillText('RỪNG TÁC CHIẾN ►', rightMidX, 32);
+        ctx.fillText('VÙNG ĐỊCH TẬP KÍCH', rightMidX, vH - 28);
+      } else {
+        ctx.fillText('◄ VÀNH ĐAI TÂY', leftMidX, 32);
+        ctx.fillText('RADAR QUÂN SỰ', leftMidX, vH - 28);
+        ctx.fillText('VÀNH ĐAI ĐÔNG ►', rightMidX, 32);
+        ctx.fillText('TRINH SÁT TÁC CHIẾN', rightMidX, vH - 28);
+      }
       ctx.restore();
     }
   }
 
   private renderArenaBoundary(ctx: CanvasRenderingContext2D) {
     ctx.save();
+    const isMeadow = this.isMeadowStage();
     // Glowing perimeter line around combat zone
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.strokeStyle = isMeadow ? 'rgba(74, 222, 128, 0.35)' : 'rgba(56, 189, 248, 0.35)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(0.5, 0.5, this.canvasWidth - 1, this.canvasHeight - 1);
 
     // High-tech Corner reinforced brackets
     const bLen = 16;
-    ctx.strokeStyle = '#38bdf8';
+    ctx.strokeStyle = isMeadow ? '#4ade80' : '#38bdf8';
     ctx.lineWidth = 2.5;
 
     // Top-Left
@@ -3982,73 +4289,110 @@ export class GameEngine {
   private drawMeadowBushTile(ctx: CanvasRenderingContext2D, x: number, y: number, isRevealed: boolean = false) {
     ctx.save();
     if (isRevealed) {
-      // === BÃI CỎ TRONG SUỐT KHI XE TĂNG NÚP TRONG (TACTICAL CONCEALMENT AURA) ===
-      ctx.globalAlpha = 0.44;
+      // === BÃI CỎ/BỤI CÂY TRONG SUỐT KHI XE TĂNG NÚP TRONG (CONCEALMENT TRANSPARENCY) ===
+      ctx.globalAlpha = 0.40;
 
-      // Soft emerald camouflage foliage
-      ctx.fillStyle = '#15803d';
-      ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+      // Soft woodland canopy silhouette
+      ctx.fillStyle = '#1c4524';
+      ctx.beginPath();
+      ctx.arc(x + 7.5, y + 8, 6.5, 0, Math.PI * 2);
+      ctx.arc(x + 18.5, y + 7.5, 7, 0, Math.PI * 2);
+      ctx.arc(x + 7, y + 18, 7, 0, Math.PI * 2);
+      ctx.arc(x + 18.5, y + 18, 6.5, 0, Math.PI * 2);
+      ctx.arc(x + 13, y + 13, 7.5, 0, Math.PI * 2);
+      ctx.fill();
 
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+      // Translucent leafy midtones
+      ctx.fillStyle = '#2d6738';
+      ctx.beginPath();
+      ctx.arc(x + 8, y + 8, 4.5, 0, Math.PI * 2);
+      ctx.arc(x + 18, y + 8, 5, 0, Math.PI * 2);
+      ctx.arc(x + 8, y + 17, 5, 0, Math.PI * 2);
+      ctx.arc(x + 18, y + 17, 4.5, 0, Math.PI * 2);
+      ctx.arc(x + 13, y + 13, 5.5, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Glowing tactical perimeter outline so player sees boundaries clearly
-      ctx.strokeStyle = 'rgba(74, 222, 128, 0.9)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x + 2.5, y + 2.5, TILE_SIZE - 5, TILE_SIZE - 5);
+      // Glowing tactical concealment boundary so player sees bush outline clearly
+      ctx.strokeStyle = 'rgba(163, 230, 53, 0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(x + 13, y + 13, 11.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
     } else {
-      // === BÃI CỎ RẬM RẠP THẢO NGUYÊN RETRO PIXEL ART (OPAQUE DENSE MEADOW LAWN) ===
-      ctx.globalAlpha = 1.0;
+      // === BỤI CÂY CHIẾN THUẬT NGHỆ THUẬT 2D (ORGANIC HAND-CRAFTED 2D SHRUBBERY) ===
+      // 1. Soft contact shadow on ground (bóng đổ tự nhiên trên mặt đất cỏ)
+      ctx.fillStyle = 'rgba(10, 20, 8, 0.48)';
+      ctx.beginPath();
+      ctx.ellipse(x + 13, y + 21, 10.5, 3.8, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 1. Deep shadowy undergrowth
-      ctx.fillStyle = '#0f3815';
-      ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+      // 2. Base Dark Woodland Undergrowth (Tán lá tầng sâu tạo độ tương phản cao với xe tăng)
+      ctx.fillStyle = '#122c17';
+      ctx.beginPath();
+      ctx.arc(x + 7.5, y + 8, 7, 0, Math.PI * 2);
+      ctx.arc(x + 18.5, y + 7.5, 7.5, 0, Math.PI * 2);
+      ctx.arc(x + 7, y + 17.5, 7.5, 0, Math.PI * 2);
+      ctx.arc(x + 18.5, y + 17.5, 7, 0, Math.PI * 2);
+      ctx.arc(x + 13, y + 12.5, 8, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 2. Main lush foliage tufts (Scalloped retro pixel grass clumps)
-      ctx.fillStyle = '#166534';
-      ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      // 3. Dense Midtone Foliage Lobes (Thân bụi cây xanh rậm rạp tự nhiên)
+      ctx.fillStyle = '#1e4b25';
+      ctx.beginPath();
+      ctx.arc(x + 7.5, y + 7.5, 5.5, 0, Math.PI * 2);
+      ctx.arc(x + 18, y + 7, 6, 0, Math.PI * 2);
+      ctx.arc(x + 7.5, y + 17, 6, 0, Math.PI * 2);
+      ctx.arc(x + 18, y + 17, 5.5, 0, Math.PI * 2);
+      ctx.arc(x + 13, y + 12, 6.5, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 3. Midtone Meadow Green Layers
-      ctx.fillStyle = '#15803d';
-      // Top-left clump
-      ctx.fillRect(x + 2, y + 2, 10, 10);
-      // Top-right clump
-      ctx.fillRect(x + 14, y + 2, 10, 10);
-      // Bottom-left clump
-      ctx.fillRect(x + 2, y + 14, 10, 10);
-      // Bottom-right clump
-      ctx.fillRect(x + 14, y + 14, 10, 10);
-      // Center dense clump
-      ctx.fillRect(x + 6, y + 6, 14, 14);
+      // 4. Secondary Foliage Volume (Tạo khối cong mượt mà chuẩn 2D art)
+      ctx.fillStyle = '#2b6335';
+      ctx.beginPath();
+      ctx.arc(x + 7, y + 6.5, 4, 0, Math.PI * 2);
+      ctx.arc(x + 17.5, y + 6, 4.5, 0, Math.PI * 2);
+      ctx.arc(x + 7, y + 16, 4.5, 0, Math.PI * 2);
+      ctx.arc(x + 17.5, y + 16, 4, 0, Math.PI * 2);
+      ctx.arc(x + 12.5, y + 11, 5, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 4. Vibrant Lime Green Leaf Canopy
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(x + 4, y + 4, 7, 7);
-      ctx.fillRect(x + 15, y + 4, 7, 7);
-      ctx.fillRect(x + 4, y + 15, 7, 7);
-      ctx.fillRect(x + 15, y + 15, 7, 7);
-      ctx.fillRect(x + 8, y + 8, 10, 10);
+      // 5. Warm Sunlit Canopy Highlights (Ánh nắng ấm áp dịu mắt, hoàn toàn không chói lóa)
+      ctx.fillStyle = '#487c3c';
+      ctx.beginPath();
+      ctx.arc(x + 6.5, y + 5.5, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 17, y + 5, 3, 0, Math.PI * 2);
+      ctx.arc(x + 6.5, y + 15, 3, 0, Math.PI * 2);
+      ctx.arc(x + 17, y + 15, 2.5, 0, Math.PI * 2);
+      ctx.arc(x + 12, y + 9.5, 3.5, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 5. Sunlit Leaf Tips & Highlights
-      ctx.fillStyle = '#86efac';
-      ctx.fillRect(x + 5, y + 4, 4, 2);
-      ctx.fillRect(x + 16, y + 4, 4, 2);
-      ctx.fillRect(x + 9, y + 8, 5, 2);
-      ctx.fillRect(x + 5, y + 15, 3, 2);
-      ctx.fillRect(x + 17, y + 15, 3, 2);
+      // Sunlit leaf crest accents
+      ctx.fillStyle = '#6b9f52';
+      ctx.fillRect(x + 6, y + 4.5, 2, 1);
+      ctx.fillRect(x + 16.5, y + 4, 2.5, 1);
+      ctx.fillRect(x + 11, y + 8, 3, 1.2);
+      ctx.fillRect(x + 6, y + 14, 2, 1);
+      ctx.fillRect(x + 16.5, y + 14, 2, 1);
 
-      // 6. Charming Little Chamomile Blossom in grass
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x + 11, y + 12, 3, 1);
-      ctx.fillRect(x + 12, y + 11, 1, 3);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(x + 12, y + 12, 1, 1);
+      // 6. Charming 2D RPG Woodland Berries (Chùm quả dại đỏ thắm tô điểm)
+      ctx.fillStyle = '#dc2626'; // Berry base
+      ctx.beginPath();
+      ctx.arc(x + 11, y + 14.5, 1.8, 0, Math.PI * 2);
+      ctx.arc(x + 14.5, y + 15.5, 1.6, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Buttercup bud in bottom left
+      // Berry light glint
+      ctx.fillStyle = '#fca5a5';
+      ctx.fillRect(x + 10.5, y + 13.8, 1, 1);
+      ctx.fillRect(x + 14, y + 14.8, 1, 1);
+
+      // 7. Small Wild Chamomile Bud on top-right lobe
       ctx.fillStyle = '#fef08a';
-      ctx.fillRect(x + 3, y + 20, 2, 2);
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(x + 3, y + 20, 1, 1);
+      ctx.fillRect(x + 19, y + 9, 2, 2);
+      ctx.fillStyle = '#ca8a04';
+      ctx.fillRect(x + 19.5, y + 9.5, 1, 1);
     }
     ctx.restore();
   }
@@ -4133,7 +4477,83 @@ export class GameEngine {
     ctx.fill();
   }
 
+  private drawMeadowWaterTile(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+    // === SUỐI NƯỚC ĐỒNG QUÊ TRONG VẮT TỰ NHIÊN (CRYSTAL-CLEAR WOODLAND STREAM) ===
+    // 1. Natural earthen/pebble shoreline rim (Không dùng viền xanh lè, dùng viền đất son tự nhiên)
+    ctx.fillStyle = '#382f1f';
+    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+
+    // 2. Clear mountain freshwater core (Màu nước ngọc lam dịu mát, không chói mắt)
+    ctx.fillStyle = '#104953';
+    ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+
+    // 3. Gentle animated aquatic stream currents
+    const wave1 = Math.sin(time * 1.6 + x * 0.14) * 2.2;
+    const wave2 = Math.cos(time * 1.3 + y * 0.14) * 2.2;
+
+    ctx.strokeStyle = 'rgba(45, 212, 191, 0.40)'; // Soft cyan-teal caustics
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 8 + wave1);
+    ctx.quadraticCurveTo(x + TILE_SIZE / 2, y + 11 + wave1, x + TILE_SIZE - 2, y + 8 + wave1);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(103, 232, 249, 0.30)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 17 + wave2);
+    ctx.quadraticCurveTo(x + TILE_SIZE / 2, y + 14 + wave2, x + TILE_SIZE - 2, y + 17 + wave2);
+    ctx.stroke();
+
+    // 4. Subtle sunlight water glint
+    const glint = (Math.sin(time * 3 + x + y) + 1) * 0.5;
+    if (glint > 0.82) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.fillRect(x + 6, y + 9 + wave1, 2.5, 1.2);
+    }
+
+    // 5. Charming Floating 2D Water-Lily Pad (Lá súng nổi trên mặt nước)
+    const hasLily = ((x * 7 + y * 13) % 19) < 8;
+    if (hasLily) {
+      const lx = x + 6 + ((x * 3 + y) % 11);
+      const ly = y + 6 + ((x + y * 5) % 10);
+
+      // Shadow in water
+      ctx.fillStyle = 'rgba(5, 25, 28, 0.5)';
+      ctx.beginPath();
+      ctx.arc(lx + 0.5, ly + 1.2, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Lily pad leaf
+      ctx.fillStyle = '#1c4927';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 3.5, 0.3, Math.PI * 1.85);
+      ctx.lineTo(lx, ly);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#378148';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 2.4, 0.3, Math.PI * 1.85);
+      ctx.lineTo(lx, ly);
+      ctx.closePath();
+      ctx.fill();
+
+      // Delicate pink water-lily bloom on some pads
+      if (((x + y) % 3) === 0) {
+        ctx.fillStyle = '#f472b6'; // Pink petal
+        ctx.fillRect(lx - 1, ly - 1, 2, 2);
+        ctx.fillStyle = '#facc15'; // Golden stamen
+        ctx.fillRect(lx - 0.5, ly - 0.5, 1, 1);
+      }
+    }
+  }
+
   private drawWaterTile(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+    if (this.isMeadowStage()) {
+      this.drawMeadowWaterTile(ctx, x, y, time);
+      return;
+    }
     // 2D Dynamic Water Tile with animated wave caustics
     ctx.fillStyle = '#0369a1';
     ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
@@ -5100,10 +5520,10 @@ export class GameEngine {
 
     // 5. High-Visibility Segmented Overhead HP Bar (Visible & Crisp on ALL tanks)
     const isPlayer = tank.isPlayer;
-    const barW = isPlayer ? 32 : (isBoss ? 42 : (tank.type === 'HEAVY' ? 30 : (tank.maxHp > 1 ? 26 : 22)));
-    const barH = isPlayer ? 5 : (isBoss ? 5.5 : 4.5);
+    const barW = isPlayer ? 32 : (tank.is360Boss ? 56 : (isBoss ? 44 : (tank.type === 'HEAVY' ? 30 : (tank.maxHp > 1 ? 26 : 22))));
+    const barH = isPlayer ? 5 : (tank.is360Boss ? 6.5 : (isBoss ? 5.5 : 4.5));
     const barX = cx - barW / 2;
-    const barY = cy - halfH - (isPlayer ? 11 : (isBoss ? 12 : 9));
+    const barY = cy - halfH - (isPlayer ? 11 : (tank.is360Boss ? 16 : (isBoss ? 13 : 9)));
 
     ctx.save();
 
@@ -5152,6 +5572,10 @@ export class GameEngine {
     if (isPlayer && tank.shieldTime > 0) {
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 1.2;
+      ctx.strokeRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
+    } else if (tank.is360Boss) {
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.4;
       ctx.strokeRect(barX - 0.5, barY - 0.5, barW + 1, barH + 1);
     } else if (isBoss) {
       ctx.strokeStyle = '#f59e0b';
@@ -5207,6 +5631,57 @@ export class GameEngine {
       }
     }
     ctx.restore();
+
+    // 360 Dreadnought Boss Overhead Indicator & Tactical Targeting Laser Sight
+    if (!isPlayer && tank.is360Boss) {
+      ctx.save();
+      // 1. Red tactical targeting laser beam from Boss center towards player
+      if (this.player && this.player.hp > 0 && !this.isPlayerDying) {
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.32)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 4]);
+        ctx.lineDashOffset = -time * 0.03;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 2. Pulsing Colossal Dreadnought Radar Perimeter
+      const pulse = 1 + Math.sin(time * 0.007) * 0.12;
+      const reticleR = (tank.width * 0.8) * pulse;
+      ctx.strokeStyle = `rgba(245, 158, 11, ${0.45 + Math.sin(time * 0.01) * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.lineDashOffset = -time * 0.025;
+      ctx.beginPath();
+      ctx.arc(cx, cy, reticleR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 3. Regal Boss Badge
+      const bossBadgeW = 84;
+      const bossBadgeH = 12;
+      const bossBadgeX = cx - bossBadgeW / 2;
+      const bossBadgeY = barY - 15;
+
+      ctx.fillStyle = 'rgba(127, 29, 29, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(bossBadgeX, bossBadgeY, bossBadgeW, bossBadgeH, 3);
+      ctx.fill();
+
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText('👑 SIÊU TRÙM 360°', cx, bossBadgeY + bossBadgeH / 2 + 0.5);
+      ctx.restore();
+    }
 
     // Hunter Tank (Xe Tăng Truy Sát / Săn Lùng) Overhead Indicator & Radar Ring
     if (!isPlayer && tank.isHunter) {

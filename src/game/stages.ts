@@ -1077,20 +1077,20 @@ function makeStage20(): StageConfig {
   grid[14][13] = TileType.EXPLOSIVE_BARREL;
 
   const enemies: EnemyType[] = [
-    'HEAVY', 'HEAVY', 'ARTILLERY', 'ASSAULT',
-    'HEAVY', 'HEAVY', 'ARTILLERY', 'HEAVY',
-    'HEAVY', 'HEAVY', 'ARTILLERY', 'HEAVY',
-    'HEAVY', 'HEAVY', 'ARTILLERY', 'HEAVY',
-    'HEAVY', 'HEAVY', 'HEAVY', 'HEAVY'
+    'HEAVY', 'ARTILLERY', 'ASSAULT', 'HEAVY',
+    'BOSS',
+    'HEAVY', 'ARTILLERY', 'HEAVY', 'HEAVY',
+    'ASSAULT', 'HEAVY', 'ARTILLERY', 'HEAVY',
+    'HEAVY', 'HEAVY'
   ];
 
   return {
     id: 20,
-    name: 'Màn 20: Tuyến Phòng Thủ Hoa Cương',
-    description: 'Tuyến phòng ngự đá hoa cương kiên cố nhất của địch trên đồng cỏ. Hàng loạt xe tăng hạng nặng và pháo tự hành sẵn sàng nghênh chiến!',
+    name: 'Màn 20: Tuyến Phòng Thủ Hoa Cương - Siêu Trùm 360°',
+    description: 'Tuyến phòng ngự hoa cương kiên cố! Siêu Trùm Pháo Tháp 360° xuất kích với giáp cực trâu, tốc độ chậm và nòng pháo xoay 360 độ khóa mục tiêu!',
     grid,
     enemies,
-    maxActiveEnemies: 6,
+    maxActiveEnemies: 5,
   };
 }
 

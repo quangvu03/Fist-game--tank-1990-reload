@@ -202,22 +202,6 @@ export function PauseModal({
             </div>
           </div>
 
-          {/* Phím ảo cảm ứng (Mobile / Touch) */}
-          {onToggleTouchControls && (
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 text-xs">Phím ảo màn hình (Cảm ứng):</span>
-              <button
-                onClick={onToggleTouchControls}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                  showTouchControls
-                    ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/80 hover:bg-emerald-900/60'
-                    : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-                }`}
-              >
-                <span>{showTouchControls ? 'ĐANG BẬT' : 'ĐANG TẮT'}</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

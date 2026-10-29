@@ -169,6 +169,9 @@ export class GameEngine {
   public baseCoord = BASE_COORD;
   public baseCenter = BASE_CENTER;
   public scale: number = 1.0;
+  public scaleX: number = 1.0;
+  public scaleY: number = 1.0;
+  public isMobileMode: boolean = false;
   public zoom: number = 1.0;
   public originX: number = 0;
   public originY: number = 0;
@@ -258,6 +261,11 @@ export class GameEngine {
     return 1.0;
   }
 
+  public setMobileMode(isMobile: boolean) {
+    this.isMobileMode = isMobile;
+    this.updateViewportSize();
+  }
+
   public updateViewportSize(_dt: number = 0.016) {
     const fallbackW = this.canvasWidth > 0 ? this.canvasWidth : CANVAS_WIDTH;
     const fallbackH = this.canvasHeight > 0 ? this.canvasHeight : CANVAS_HEIGHT;
@@ -273,18 +281,31 @@ export class GameEngine {
     this.viewWidth = Math.min(this.canvasWidth, CANVAS_WIDTH);
     this.viewHeight = Math.min(this.canvasHeight, CANVAS_HEIGHT);
 
-    // Fixed 100% scale preserving 1:1 square pixel aspect ratio and fitting visible view window into viewport
     const scaleX = clientW / Math.max(1, this.viewWidth);
     const scaleY = clientH / Math.max(1, this.viewHeight);
-    this.scale = Math.max(0.1, Math.min(scaleX, scaleY));
-    this.zoom = 1.0;
 
-    const scaledW = this.viewWidth * this.scale;
-    const scaledH = this.viewHeight * this.scale;
+    if (this.isMobileMode) {
+      // CHẾ ĐỘ MOBILE: MAP LẤP ĐẦY 100% TOÀN BỘ MÀN HÌNH (EDGE-TO-EDGE, KHÔNG VIỀN ĐEN)
+      this.scaleX = scaleX;
+      this.scaleY = scaleY;
+      this.scale = Math.min(scaleX, scaleY);
+      this.zoom = 1.0;
+      this.originX = 0;
+      this.originY = 0;
+    } else {
+      // CHẾ ĐỘ PC: Tỷ lệ 16:9 chuẩn mực, căn giữa màn hình
+      const uniformScale = Math.max(0.1, Math.min(scaleX, scaleY));
+      this.scale = uniformScale;
+      this.scaleX = uniformScale;
+      this.scaleY = uniformScale;
+      this.zoom = 1.0;
 
-    // Perfectly center arena on screen
-    this.originX = Math.round((clientW - scaledW) / 2);
-    this.originY = Math.round((clientH - scaledH) / 2);
+      const scaledW = this.viewWidth * uniformScale;
+      const scaledH = this.viewHeight * uniformScale;
+
+      this.originX = Math.round((clientW - scaledW) / 2);
+      this.originY = Math.round((clientH - scaledH) / 2);
+    }
 
     weatherSystem.setBounds(clientW, clientH);
   }
@@ -664,8 +685,8 @@ export class GameEngine {
     if (!rect.width || !rect.height) return;
     const clientX = e.clientX - rect.left;
     const clientY = e.clientY - rect.top;
-    const mappedX = (clientX - this.originX) / Math.max(0.001, this.scale);
-    const mappedY = (clientY - this.originY) / Math.max(0.001, this.scale);
+    const mappedX = (clientX - this.originX) / Math.max(0.001, this.scaleX);
+    const mappedY = (clientY - this.originY) / Math.max(0.001, this.scaleY);
     const worldX = mappedX + (this.gameMode === 'SURVIVAL' ? this.cameraX : 0);
     const worldY = mappedY + (this.gameMode === 'SURVIVAL' ? this.cameraY : 0);
     this.mousePos = {
@@ -3862,7 +3883,7 @@ export class GameEngine {
     // 2. Render arena inside perfectly scaled 1:1 square viewport
     ctx.save();
     ctx.translate(this.originX, this.originY);
-    ctx.scale(this.scale, this.scale);
+    ctx.scale(this.scaleX, this.scaleY);
     ctx.translate(this.shakeOffsetX, this.shakeOffsetY);
 
     if (this.gameMode === 'SURVIVAL') {

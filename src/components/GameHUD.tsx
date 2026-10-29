@@ -15,6 +15,7 @@ import {
   Wrench,
   Maximize,
   Minimize,
+  Plane,
 } from 'lucide-react';
 import { GameStats, PlayerCombatStats } from '../types/game';
 import { SupportItemId } from '../types/shop';
@@ -32,6 +33,8 @@ interface GameHUDProps {
   isMobileLandscape?: boolean;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  deviceMode?: 'PC' | 'MOBILE';
+  onToggleDeviceMode?: () => void;
 }
 
 export function GameHUD({
@@ -47,6 +50,8 @@ export function GameHUD({
   isMobileLandscape = false,
   isFullscreen = false,
   onToggleFullscreen,
+  deviceMode = 'PC',
+  onToggleDeviceMode,
 }: GameHUDProps) {
   const isSurvival = stats.gameMode === 'SURVIVAL';
 
@@ -154,17 +159,6 @@ export function GameHUD({
           >
             {isPaused ? <Play className="w-3 h-3 fill-current" /> : <Pause className="w-3 h-3 fill-current" />}
           </button>
-
-          {/* Nút Toàn Màn Hình */}
-          {onToggleFullscreen && (
-            <button
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
-              className="flex items-center justify-center w-6 h-6 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 active:scale-95 transition-all cursor-pointer shrink-0"
-            >
-              {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
-            </button>
-          )}
         </div>
       </header>
     );
@@ -227,73 +221,11 @@ export function GameHUD({
               </div>
             )}
 
-            {/* 4. Nút Nâng cấp căn cứ */}
-            {stats.baseTier < 5 ? (
-              <button
-                onClick={onUpgradeBase}
-                title={`Nâng cấp căn cứ lên Cấp ${stats.baseTier + 1} & Phục hồi tường phòng thủ (Phím U)`}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg font-bold tracking-tight transition-all cursor-pointer shadow-sm shrink-0 ${
-                  stats.canUpgradeBase
-                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 font-black animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.6)]'
-                    : 'bg-slate-800/90 text-slate-300 hover:text-white border border-slate-700'
-                }`}
-              >
-                <ArrowUpCircle
-                  className={`w-3.5 h-3.5 shrink-0 ${stats.canUpgradeBase ? 'text-slate-950' : 'text-amber-400'}`}
-                />
-                <span className="font-black text-[9px] uppercase tracking-tight whitespace-nowrap">
-                  NÂNG CẤP CĂN CỨ
-                </span>
-                <span
-                  className={`font-mono text-[9px] px-1 py-0.2 rounded font-black ${
-                    stats.canUpgradeBase ? 'bg-slate-950/20 text-slate-950' : 'text-amber-300 bg-slate-950/40'
-                  }`}
-                >
-                  {stats.baseUpgradeCost}đ
-                </span>
-              </button>
-            ) : (
-              <span className="text-[9px] font-black text-cyan-300 px-2 py-1 rounded-lg bg-cyan-950/60 border border-cyan-800 shrink-0 tracking-tight uppercase">
-                CĂN CỨ TỐI ĐA
-              </span>
-            )}
           </>
         )}
 
         {/* Vạch ngăn cách */}
         <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
-
-        {/* 5. LEVEL / ĐỢT */}
-        <div
-          className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 shadow-inner shrink-0"
-          title={stats.gameMode === 'SURVIVAL' ? `Đợt sinh tồn: Đợt ${stats.stage}` : `Cấp độ màn chơi: Level ${stats.stage}`}
-        >
-          <span className="text-[10px] font-black text-emerald-400 tracking-wider">
-            {stats.gameMode === 'SURVIVAL' ? 'ĐỢT' : 'LEVEL'}
-          </span>
-          <span className="text-white font-mono font-black text-xs">{stats.stage}</span>
-        </div>
-
-        {/* 6. ĐỊCH */}
-        <div
-          className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 shadow-inner shrink-0"
-          title="Số xe tăng địch còn lại"
-        >
-          <Skull className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-          <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">ĐỊCH</span>
-          <span className="font-mono text-xs font-black text-white">{remainingEnemies}</span>
-        </div>
-
-        {/* 7. ĐIỂM */}
-        <div
-          className="flex items-center gap-1 bg-amber-950/40 border border-amber-500/60 px-2 py-1 rounded-lg shadow-inner shrink-0"
-          title="Điểm số chiến đấu"
-        >
-          <span className="text-[9px] font-black text-amber-400">ĐIỂM</span>
-          <span className="font-mono text-xs font-black text-amber-300 tabular-nums">
-            {stats.score.toLocaleString()}
-          </span>
-        </div>
 
         {/* 7.5. TIỀN XU NHẶT TRONG VÁN NÀY */}
         <div
@@ -310,118 +242,72 @@ export function GameHUD({
         {/* Vạch ngăn cách */}
         <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
 
-        {/* 8. QUÂN NHU HỖ TRỢ NHANH (B, F, R) */}
+        {/* 8. DUY NHẤT 3 NÚT TÁC CHIẾN TRÊN CHẾ ĐỘ PC: KHÔNG CHIẾN, ĐÓNG BĂNG, CỨU HỘ */}
         {onUseSupportItem && stats.supportInventory && (
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Không kích (B) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* 1. Nút Không Chiến (Phím B) */}
             <button
               onClick={() => onUseSupportItem('AIRSTRIKE')}
               disabled={(stats.supportInventory.AIRSTRIKE || 0) <= 0}
-              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide border transition-all cursor-pointer shrink-0 shadow-sm ${
                 (stats.supportInventory.AIRSTRIKE || 0) > 0
-                  ? 'bg-red-950/80 text-red-300 border-red-700/80 hover:bg-red-900 active:scale-95'
-                  : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed opacity-60'
+                  ? 'bg-rose-950/90 text-rose-200 border-rose-600/80 hover:bg-rose-900 hover:text-white hover:border-rose-400 active:scale-95 shadow-[0_0_12px_rgba(225,29,72,0.4)]'
+                  : 'bg-slate-950/80 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
               }`}
-              title="Không kích hạt nhân dải thảm toàn bản đồ (Phím B)"
+              title="Không chiến: Gọi máy bay dải bom toàn bộ xe tăng địch (Phím B)"
             >
-              <Radio className="w-3 h-3 text-red-400 shrink-0" />
-              <span>B</span>
-              <span className="font-mono font-black text-white px-1 bg-slate-950/60 rounded">
+              <Plane className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>Không Chiến</span>
+              <span className="px-1 py-0.2 rounded bg-rose-500/25 text-rose-300 font-mono text-[9px] border border-rose-500/30">
+                [B]
+              </span>
+              <span className="font-mono font-black text-white px-1.5 py-0.2 bg-slate-950/90 rounded border border-slate-700">
                 {stats.supportInventory.AIRSTRIKE || 0}
               </span>
             </button>
 
-            {/* Đóng băng (F) */}
+            {/* 2. Nút Đóng Băng (Phím F) */}
             <button
               onClick={() => onUseSupportItem('CRYO_FREEZE')}
               disabled={(stats.supportInventory.CRYO_FREEZE || 0) <= 0}
-              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide border transition-all cursor-pointer shrink-0 shadow-sm ${
                 (stats.supportInventory.CRYO_FREEZE || 0) > 0
-                  ? 'bg-sky-950/80 text-sky-300 border-sky-700/80 hover:bg-sky-900 active:scale-95'
-                  : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed opacity-60'
+                  ? 'bg-sky-950/90 text-sky-200 border-sky-600/80 hover:bg-sky-900 hover:text-white hover:border-sky-400 active:scale-95 shadow-[0_0_12px_rgba(2,132,199,0.4)]'
+                  : 'bg-slate-950/80 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
               }`}
-              title="Đóng băng toàn bộ xe tăng địch trong 8 giây (Phím F)"
+              title="Đóng băng: Làm tê liệt toàn bộ xe tăng địch trong 8 giây (Phím F)"
             >
-              <Snowflake className="w-3 h-3 text-sky-400 shrink-0" />
-              <span>F</span>
-              <span className="font-mono font-black text-white px-1 bg-slate-950/60 rounded">
+              <Snowflake className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span>Đóng Băng</span>
+              <span className="px-1 py-0.2 rounded bg-sky-500/25 text-sky-300 font-mono text-[9px] border border-sky-500/30">
+                [F]
+              </span>
+              <span className="font-mono font-black text-white px-1.5 py-0.2 bg-slate-950/90 rounded border border-slate-700">
                 {stats.supportInventory.CRYO_FREEZE || 0}
               </span>
             </button>
 
-            {/* Cứu thương (R) */}
+            {/* 3. Nút Cứu Hộ (Phím R) */}
             <button
               onClick={() => onUseSupportItem('REPAIR_KIT')}
               disabled={(stats.supportInventory.REPAIR_KIT || 0) <= 0}
-              className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide border transition-all cursor-pointer shrink-0 shadow-sm ${
                 (stats.supportInventory.REPAIR_KIT || 0) > 0
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80 hover:bg-emerald-900 active:scale-95'
-                  : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed opacity-60'
+                  ? 'bg-emerald-950/90 text-emerald-200 border-emerald-600/80 hover:bg-emerald-900 hover:text-white hover:border-emerald-400 active:scale-95 shadow-[0_0_12px_rgba(5,150,105,0.4)]'
+                  : 'bg-slate-950/80 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
               }`}
-              title="Cứu thương & phục hồi thân xe khẩn cấp +2 HP (Phím R)"
+              title="Cứu hộ: Sửa chữa và phục hồi thân xe khẩn cấp +2 HP (Phím R)"
             >
-              <Wrench className="w-3 h-3 text-emerald-400 shrink-0" />
-              <span>R</span>
-              <span className="font-mono font-black text-white px-1 bg-slate-950/60 rounded">
+              <Wrench className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Cứu Hộ</span>
+              <span className="px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-mono text-[9px] border border-emerald-500/30">
+                [R]
+              </span>
+              <span className="font-mono font-black text-white px-1.5 py-0.2 bg-slate-950/90 rounded border border-slate-700">
                 {stats.supportInventory.REPAIR_KIT || 0}
               </span>
             </button>
           </div>
-        )}
-
-        {/* Vạch ngăn cách */}
-        <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block shrink-0" />
-
-        {/* 9. Tạm dừng / Tiếp tục */}
-        <button
-          onClick={onTogglePause}
-          title={isPaused ? 'Tiếp tục trận đấu (Phím P hoặc Esc)' : 'Tạm dừng trận đấu & Cài đặt / Sổ tay (Phím P hoặc Esc)'}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide transition-all cursor-pointer shadow-sm border shrink-0 ${
-            isPaused
-              ? 'bg-emerald-500 text-slate-950 border-emerald-400 hover:bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border-slate-700'
-          }`}
-        >
-          {isPaused ? (
-            <>
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>TIẾP TỤC</span>
-            </>
-          ) : (
-            <>
-              <Pause className="w-3.5 h-3.5 fill-current" />
-              <span>TẠM DỪNG</span>
-            </>
-          )}
-        </button>
-
-        {/* 10. Nút Tắt/Bật Nhạc Sảnh */}
-        {onToggleMusic && (
-          <button
-            onClick={onToggleMusic}
-            title={isMusicMuted ? 'Bật nhạc nền sảnh chờ (Phím M)' : 'Tắt nhạc nền sảnh chờ (Phím M)'}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black tracking-wide transition-all cursor-pointer shadow-sm border shrink-0 ${
-              isMusicMuted
-                ? 'bg-rose-950/70 text-rose-300 border-rose-800 hover:bg-rose-900/80'
-                : 'bg-emerald-950/70 text-emerald-300 border-emerald-700 hover:bg-emerald-900/80 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-            }`}
-          >
-            <Music className={`w-3.5 h-3.5 shrink-0 ${!isMusicMuted ? 'text-emerald-400 animate-pulse' : 'text-rose-400'}`} />
-            <span className="font-mono text-[9px] font-black">
-              {isMusicMuted ? 'NHẠC SẢNH: TẮT' : 'NHẠC SẢNH: BẬT'}
-            </span>
-          </button>
-        )}
-
-        {/* 11. Nút Toàn Màn Hình Desktop / Landscape */}
-        {onToggleFullscreen && (
-          <button
-            onClick={onToggleFullscreen}
-            title={isFullscreen ? 'Thu nhỏ cửa sổ' : 'Toàn màn hình'}
-            className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 active:scale-95 transition-all cursor-pointer shrink-0 ml-0.5"
-          >
-            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-          </button>
         )}
       </div>
     </header>
@@ -455,7 +341,7 @@ export function GameFooter({ highScore, combatStats }: GameFooterProps) {
         )}
 
         <div className="hidden sm:flex items-center gap-2 border-slate-700 sm:border-l sm:pl-3">
-          <span>WASD: Lái · Space: Bắn · <b>B: Không Kích</b> · <b>F: Băng Phong</b> · <b>R: Hồi Máu</b> · <b>U: Căn Cứ</b> · <b>P: Tạm Dừng</b></span>
+          <span>WASD: Di chuyển · Space: Bắn · <b>B: Không Chiến</b> · <b>F: Đóng Băng</b> · <b>R: Cứu Hộ</b> · <b>U: Căn Cứ</b> · <b>P/Esc: Tạm Dừng</b> · <b>M: Nhạc</b></span>
           <span>·</span>
           <span>
             Kỷ lục: <b className="text-amber-300 font-mono">{highScore.toLocaleString()}</b>

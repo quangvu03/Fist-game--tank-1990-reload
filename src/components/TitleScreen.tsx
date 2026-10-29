@@ -30,6 +30,8 @@ interface TitleScreenProps {
   onOpenShop?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  deviceMode?: 'PC' | 'MOBILE';
+  onToggleDeviceMode?: () => void;
 }
 
 export function TitleScreen({
@@ -43,6 +45,8 @@ export function TitleScreen({
   onOpenShop,
   isFullscreen = false,
   onToggleFullscreen,
+  deviceMode = 'PC',
+  onToggleDeviceMode,
 }: TitleScreenProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode>('CAMPAIGN');
   const [stageSelect, setStageSelect] = useState<number>(1);

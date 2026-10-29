@@ -25,26 +25,41 @@ export default function App() {
   const [isMusicMuted, setIsMusicMuted] = useState<boolean>(() => musicEngine.getMuted());
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isShopOpen, setIsShopOpen] = useState<boolean>(false);
-  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(false);
-  const [showTouchControls, setShowTouchControls] = useState<boolean>(true);
+  // Chế độ thiết bị: PC hoặc MOBILE (tự động nhận diện và cho phép người chơi bấm chuyển đổi)
+  const [deviceMode, setDeviceMode] = useState<'PC' | 'MOBILE'>(() => {
+    if (typeof window === 'undefined') return 'PC';
+    const ua = navigator.userAgent || '';
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const isNarrow = window.innerWidth <= 1024 && (hasTouch || window.innerHeight <= 600 || window.innerWidth < window.innerHeight);
+    return (isMobileUA || isNarrow) ? 'MOBILE' : 'PC';
+  });
+
+  const isMobileMode = deviceMode === 'MOBILE';
+
+  const handleToggleDeviceMode = useCallback(() => {
+    setDeviceMode((prev) => {
+      const next = prev === 'PC' ? 'MOBILE' : 'PC';
+      engineRef.current?.setMobileMode(next === 'MOBILE');
+      return next;
+    });
+  }, []);
+
   const [isPortraitNoticeVisible, setIsPortraitNoticeVisible] = useState<boolean>(false);
-  const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const wasPlayingBeforeGuideRef = useRef<boolean>(false);
   const wasPlayingBeforeShopRef = useRef<boolean>(false);
   const prevGameStatusRef = useRef<GameStatus>('TITLE');
 
-  // Monitor device orientation, touch capabilities and fullscreen state for 16:9 edge-to-edge experience
+  // Monitor device orientation, touch capabilities and fullscreen state for edge-to-edge experience
   useEffect(() => {
     const handleDeviceAndOrientation = () => {
+      const ua = navigator.userAgent || '';
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
       const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      const isLandscape = window.innerWidth > window.innerHeight;
-      const isCompactHeight = window.innerHeight <= 560;
-      setIsTouchDevice(hasTouch);
-      // Chế độ xoay ngang mobile: màn hình nằm ngang và có cảm ứng hoặc chiều cao nhỏ <= 560px
-      setIsMobileLandscape(isLandscape && (hasTouch || isCompactHeight));
-      const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth < 768;
-      setIsPortraitNoticeVisible(isPortrait && hasTouch);
+      const isPortrait = window.innerHeight > window.innerWidth && (isMobileUA || hasTouch);
+      setIsPortraitNoticeVisible(isPortrait && isMobileMode);
+      engineRef.current?.setMobileMode(isMobileMode);
     };
     handleDeviceAndOrientation();
     window.addEventListener('resize', handleDeviceAndOrientation);
@@ -60,7 +75,7 @@ export default function App() {
       window.removeEventListener('orientationchange', handleDeviceAndOrientation);
       document.removeEventListener('fullscreenchange', onFsChange);
     };
-  }, []);
+  }, [isMobileMode]);
 
   // HTML5 Fullscreen API toggle
   const handleToggleFullscreen = useCallback(() => {
@@ -226,10 +241,11 @@ export default function App() {
       );
 
       engine.setControlMode(cMode);
+      engine.setMobileMode(isMobileMode);
       engine.start();
       engineRef.current = engine;
     },
-    [handleGameOver, handleStageClear]
+    [handleGameOver, handleStageClear, isMobileMode]
   );
 
   // Start Game from Title Screen
@@ -492,20 +508,20 @@ export default function App() {
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none font-sans p-0 m-0">
-      {/* 1. Màn chơi chính: Khi xoay ngang mobile -> tràn viền 100% full screen, các nút bấm đè lên chiến trường */}
+      {/* 1. Màn chơi chính: Khi ở chế độ mobile -> tràn viền 100% full screen, các phím ảo đè lên chiến trường */}
       <div
         className={`relative z-10 ${
-          isMobileLandscape ? 'block' : 'flex flex-col'
+          isMobileMode ? 'block' : 'flex flex-col'
         } w-full h-full overflow-hidden transition-opacity duration-200 ${
           gameStatus === 'TITLE' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
         }`}
       >
-        {/* Banner nhắc xoay ngang điện thoại nếu đang ở chế độ dọc (portrait) */}
+        {/* Banner nhắc xoay ngang điện thoại nếu đang ở chế độ dọc (portrait) trên mobile */}
         {isPortraitNoticeVisible && (
           <div className="absolute top-0 inset-x-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black px-3 py-1 text-[11px] flex items-center justify-between shadow-lg shrink-0 z-40">
             <span className="flex items-center gap-1.5">
               <span className="text-sm">🔄</span>
-              <span>Xoay ngang điện thoại để trải nghiệm toàn màn hình 16:9 tốt nhất!</span>
+              <span>Xoay ngang điện thoại để trải nghiệm toàn màn hình lấp đầy đẹp nhất!</span>
             </span>
             <button
               onClick={() => setIsPortraitNoticeVisible(false)}
@@ -517,8 +533,8 @@ export default function App() {
         )}
 
         {/* THANH TRẠNG THÁI TRÊN (GameHUD):
-            - Mobile xoay ngang: Thanh nổi bán trong suốt đè lên đỉnh chiến trường (không đẩy canvas xuống)
-            - Desktop: Thanh cố định chuẩn */}
+            - Mobile: Thanh nổi bán trong suốt đè lên đỉnh chiến trường (không đẩy canvas xuống)
+            - PC: Thanh cố định chuẩn */}
         <GameHUD
           stats={stats}
           remainingEnemies={remainingEnemies}
@@ -529,17 +545,19 @@ export default function App() {
           onToggleMusic={handleToggleMusic}
           onOpenShop={handleOpenShop}
           onUseSupportItem={handleUseSupportItem}
-          isMobileLandscape={isMobileLandscape}
+          isMobileLandscape={isMobileMode}
           isFullscreen={isFullscreen}
           onToggleFullscreen={handleToggleFullscreen}
+          deviceMode={deviceMode}
+          onToggleDeviceMode={handleToggleDeviceMode}
         />
 
         {/* CHIẾN TRƯỜNG CỦA GAME (CANVAS):
-            - Mobile xoay ngang: absolute inset-0 w-full h-full (toàn màn hình 100%, tỷ lệ 16:9 chuẩn)
-            - Desktop: relative flex-1 w-full min-h-0 */}
+            - Mobile: absolute inset-0 w-full h-full (toàn màn hình 100%, lấp đầy mọi góc cạnh không viền đen)
+            - PC: relative flex-1 w-full min-h-0 */}
         <div
           className={`${
-            isMobileLandscape ? 'absolute inset-0' : 'relative flex-1'
+            isMobileMode ? 'absolute inset-0' : 'relative flex-1'
           } w-full min-h-0 flex items-center justify-center overflow-hidden bg-slate-950`}
         >
           <canvas
@@ -547,23 +565,17 @@ export default function App() {
             className="w-full h-full block cursor-crosshair select-none"
           />
 
-          {/* Phím ảo điều khiển cảm ứng: ĐÈ LÊN CHIẾN TRƯỜNG, NÚT NHỎ GỌN BÁN TRONG SUỐT KHÔNG CHE TẦM NHÌN */}
-          {(isTouchDevice || showTouchControls) && (
+          {/* 3 Icon sử dụng item quân nhu chiến thuật trên màn hình: Không Chiến, Đóng Băng, Cứu Hộ */}
+          {isMobileMode && (
             <TouchControls
-              onDirectionInput={handleVirtualDirection}
-              onFireInput={handleVirtualFire}
               onUseSupportItem={handleUseSupportItem}
-              onUpgradeBase={handleUpgradeBase}
-              canUpgradeBase={stats.canUpgradeBase}
               supportInventory={stats.supportInventory}
-              isFullscreen={isFullscreen}
-              onToggleFullscreen={handleToggleFullscreen}
             />
           )}
         </div>
 
-        {/* THANH TRẠNG THÁI DƯỚI: Ẩn trên mobile xoay ngang để chiến trường chiếm 100% chiều cao */}
-        {!isMobileLandscape && (
+        {/* THANH TRẠNG THÁI DƯỚI: Ẩn trên mobile để chiến trường chiếm 100% chiều cao */}
+        {!isMobileMode && (
           <GameFooter highScore={stats.highScore} combatStats={stats.combatStats} />
         )}
 
@@ -582,8 +594,8 @@ export default function App() {
             weather={stats.weather}
             isWeatherEnabled={stats.isWeatherEnabled}
             onToggleWeather={handleToggleWeather}
-            showTouchControls={showTouchControls}
-            onToggleTouchControls={() => setShowTouchControls((prev) => !prev)}
+            showTouchControls={isMobileMode}
+            onToggleTouchControls={handleToggleDeviceMode}
           />
         )}
 
@@ -619,6 +631,8 @@ export default function App() {
             onOpenShop={handleOpenShop}
             isFullscreen={isFullscreen}
             onToggleFullscreen={handleToggleFullscreen}
+            deviceMode={deviceMode}
+            onToggleDeviceMode={handleToggleDeviceMode}
           />
         </div>
       )}
